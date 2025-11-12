@@ -7,14 +7,25 @@ pub struct KoiiDatabase {
     pub users: UsersCollection,
 }
 
-pub async fn initialize(
-    mongodb_connection_string: &str
-) -> Result<KoiiDatabase, mongodb::error::Error> {
-    let client = mongodb::Client::with_uri_str(mongodb_connection_string).await?;
+pub async fn initialize() -> Result<KoiiDatabase, mongodb::error::Error> {
+    let mongodb_connection_string = std::env
+        ::var("MONGODB_CONNECTION_STRING")
+        .expect("MONGODB_CONNECTION_STRING must be set in .env file");
+    let redis_connection_string = std::env
+        ::var("REDIS_CONNECTION_STRING")
+        .expect("REDIS_CONNECTION_STRING must be set in .env file");
 
-    let database = client.database("koii");
+    let mongo_client = mongodb::Client::with_uri_str(mongodb_connection_string).await?;
+    let mongo_database = mongo_client.database("koii");
 
+    let redis_database = redis::Client
+        ::open(redis_connection_string)
+        .unwrap()
+        .get_multiplexed_async_connection().await
+        .unwrap();
+
+    let user_space = mongo_database.collection("users");
     Ok(KoiiDatabase {
-        users: UsersCollection::default(database.collection("users")).await.unwrap(),
+        users: UsersCollection::default(user_space).await.unwrap(),
     })
 }

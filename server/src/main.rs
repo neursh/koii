@@ -1,5 +1,4 @@
 use axum::Router;
-
 use crate::services::{ Services, WorkerSpec, WorkersAllocate };
 
 pub mod database;
@@ -11,13 +10,10 @@ pub mod base;
 async fn main() {
     dotenv::dotenv().ok();
 
-    let mongodb_connection_string = std::env
-        ::var("MONGODB_CONNECTION_STRING")
-        .expect("MONGODB_CONNECTION_STRING must be set in .env file");
     let host = std::env::var("HOST").expect("HOST must be set in .env file");
 
     println!("Connecting to DB...");
-    let koii_database = database::initialize(&mongodb_connection_string).await.unwrap();
+    let koii_database = database::initialize().await.unwrap();
     println!("DB connection established.");
 
     let services = Services::new(WorkersAllocate {
