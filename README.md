@@ -5,7 +5,7 @@ This auth server will allow people to use my projects without having to create a
 
 By default for third-party services, no additional information will be given when connecting, a new ID ties to that service will be issued on your Koii account, and that's the only thing the service will know about you, a unique ID for that service alone.
 
-Services can request for your email, but it's expected that ALL features from that service MUST work without the need for your emails, if the service needs to contact you, Koii is a proxy for that, too!!
+Services can request for your email, and they have to explicitly disclose reasons why in the OAuth screen. It's also expected that ALL features from that service MUST work without the need for your emails
 
 Man these are some bold claims like ppl would use this ToT
 
