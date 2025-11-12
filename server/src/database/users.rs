@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use mongodb::{ IndexModel, bson::{ self, Document }, options::IndexOptions };
+use mongodb::{ IndexModel, bson::{ self, DateTime, Document }, options::IndexOptions };
 use serde::{ Deserialize, Serialize };
 
 #[derive(Clone, Deserialize, Serialize)]
@@ -12,6 +12,8 @@ pub struct UserDocument {
     pub verify_requested: Option<bson::DateTime>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub verify_token: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub created_at: Option<bson::DateTime>,
 }
 
 #[derive(Clone)]
@@ -53,7 +55,13 @@ impl UsersCollection {
     pub async fn verify(&self, verify_token: String) -> Result<bool, mongodb::error::Error> {
         let result = self.collection.update_one(
             bson::doc! { "verify_token": verify_token },
-            bson::doc! { "$unset": { "verify_requested": "", "verify_token" : "" } }
+            bson::doc! {
+                "created_at": DateTime::now(),
+                "$unset": {
+                    "verify_requested": "",
+                    "verify_token" : ""
+                }
+            }
         ).await?;
         if result.modified_count == 1 {
             return Ok(true);

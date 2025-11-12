@@ -78,6 +78,7 @@ pub async fn handler(
         password_hash,
         verify_requested: Some(bson::DateTime::now()),
         verify_token: Some(verify_token),
+        created_at: None,
     };
 
     match state.koii_database.users.add(user).await {
