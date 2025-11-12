@@ -1,11 +1,11 @@
-use std::env;
+use axum::Router;
 
 use crate::services::{ Services, WorkerSpec, WorkersAllocate };
 
-mod database;
-mod services;
-mod conductor_app;
-mod http_app;
+pub mod database;
+pub mod services;
+mod routes;
+pub mod base;
 
 #[tokio::main]
 async fn main() {
@@ -14,12 +14,11 @@ async fn main() {
     let mongodb_connection_string = std::env
         ::var("MONGODB_CONNECTION_STRING")
         .expect("MONGODB_CONNECTION_STRING must be set in .env file");
-    let http_host = std::env::var("HTTP_HOST").expect("HTTP_HOST must be set in .env file");
-    let conductor_host = std::env
-        ::var("CONDUCTOR_HOST")
-        .expect("CONDUCTOR_HOST must be set in .env file");
+    let host = std::env::var("HOST").expect("HOST must be set in .env file");
 
-    let koii_collections = database::initialize(&mongodb_connection_string).await.unwrap();
+    println!("Connecting to DB...");
+    let koii_database = database::initialize(&mongodb_connection_string).await.unwrap();
+    println!("DB connection established.");
 
     let services = Services::new(WorkersAllocate {
         // Allocate a reasonable amount of workers for password services.
@@ -39,5 +38,10 @@ async fn main() {
         },
     });
 
-    println!("Hello, world!");
+    let app = Router::new().nest("/user", routes::user::routes(services, koii_database));
+    let listener = tokio::net::TcpListener::bind(host.clone()).await.unwrap();
+
+    println!("Hello, world (world here is {})! :3", host);
+
+    axum::serve(listener, app).await.unwrap();
 }
