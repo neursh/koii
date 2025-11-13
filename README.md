@@ -10,6 +10,8 @@ Services can request for your email, and they have to explicitly disclose reason
 Man these are some bold claims like ppl would use this ToT
 
 ## Rate limits
+Rate limits is configured by tightrope, a load balancer to hold everything together.
+
 This rate limits apply for unauthenticated users:
 - **Signing up**: 10 accounts can be created from a single IPv4/v6 address every 3 hours.
 - **Loging in**: 20 login operations can be made from a single IPv4/v6 address every 2 hours.

@@ -17,21 +17,21 @@ pub struct UserDocument {
 }
 
 #[derive(Clone)]
-pub struct UsersCollection {
-    collection: mongodb::Collection<UserDocument>,
+pub struct UsersStore {
+    endpoint: mongodb::Collection<UserDocument>,
 }
-impl UsersCollection {
+impl UsersStore {
     pub async fn default(
-        collection: mongodb::Collection<UserDocument>
+        endpoint: mongodb::Collection<UserDocument>
     ) -> Result<Self, mongodb::error::Error> {
-        collection.create_index(
+        endpoint.create_index(
             IndexModel::builder()
                 .keys(bson::doc! { "email": 1 })
                 .options(IndexOptions::builder().unique(true).build())
                 .build()
         ).await?;
 
-        collection.create_index(
+        endpoint.create_index(
             IndexModel::builder()
                 .keys(bson::doc! { "verify_requested": 1 })
                 .options(
@@ -42,21 +42,23 @@ impl UsersCollection {
                 .build()
         ).await?;
 
-        Ok(UsersCollection {
-            collection,
+        Ok(UsersStore {
+            endpoint,
         })
     }
 
     pub async fn add(&self, document: UserDocument) -> Result<(), mongodb::error::Error> {
-        self.collection.insert_one(document).await?;
+        self.endpoint.insert_one(document).await?;
         Ok(())
     }
 
     pub async fn verify(&self, verify_token: String) -> Result<bool, mongodb::error::Error> {
-        let result = self.collection.update_one(
+        let result = self.endpoint.update_one(
             bson::doc! { "verify_token": verify_token },
             bson::doc! {
-                "created_at": DateTime::now(),
+                "$set": {
+                    "created_at": DateTime::now(),
+                },
                 "$unset": {
                     "verify_requested": "",
                     "verify_token" : ""
@@ -73,11 +75,11 @@ impl UsersCollection {
         &self,
         query: Document
     ) -> Result<Option<UserDocument>, mongodb::error::Error> {
-        self.collection.find_one(query).await
+        self.endpoint.find_one(query).await
     }
 
     pub async fn delete(&self, id: String) -> Result<(), mongodb::error::Error> {
-        self.collection.delete_one(bson::doc! { "_id": id }).await?;
+        self.endpoint.delete_one(bson::doc! { "_id": id }).await?;
         Ok(())
     }
 }

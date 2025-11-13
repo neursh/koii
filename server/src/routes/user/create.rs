@@ -21,7 +21,7 @@ pub async fn handler(
     Json(payload): Json<CreatePayload>
 ) -> (StatusCode, Json<ResponseModel>) {
     // Vro I don't like too much processing yk.
-    if state.limiters.create.acquire().await.is_err() {
+    if state.semaphores.create.acquire().await.is_err() {
         return base::response::internal_error();
     }
 
