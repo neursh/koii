@@ -5,6 +5,7 @@ pub mod database;
 pub mod services;
 mod routes;
 pub mod base;
+pub mod utils;
 
 #[tokio::main]
 async fn main() {
@@ -34,7 +35,9 @@ async fn main() {
         },
     });
 
-    let app = Router::new().nest("/user", routes::user::routes(services, koii_database));
+    let jwt = utils::jwt::Jwt::new();
+
+    let app = Router::new().nest("/user", routes::user::routes(services, koii_database, jwt));
     let listener = tokio::net::TcpListener::bind(host.clone()).await.unwrap();
 
     println!("Hello, world (world here is {})! :3", host);
