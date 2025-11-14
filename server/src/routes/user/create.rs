@@ -59,13 +59,13 @@ pub async fn handler(
         }
     };
 
-    let verify_token = nanoid!(64);
+    let verify_code = nanoid!(64);
 
     if
         state.services.verify_email
             .send_ignore_result(VerifyEmailRequest {
                 email: payload.email.clone(),
-                verify_token: verify_token.clone(),
+                verify_code: verify_code.clone(),
             }).await
             .is_err()
     {
@@ -77,7 +77,7 @@ pub async fn handler(
         email: payload.email,
         password_hash,
         verify_requested: Some(bson::DateTime::now()),
-        verify_token: Some(verify_token),
+        verify_code: Some(verify_code),
         created_at: None,
     };
 
