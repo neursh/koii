@@ -1,2 +1,5 @@
 .env
 /target
+private.key
+private.kc.pem
+public.kc.pem
