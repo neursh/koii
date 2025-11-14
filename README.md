@@ -17,3 +17,10 @@ This rate limits apply for unauthenticated users:
 - **Loging in**: 20 login operations can be made from a single IPv4/v6 address every 2 hours.
 
 For authenticated users, there will be rate limits too, though it won't have much of an impact if you don't do anything crazy, more details later as I build this thing.
+
+## Server structure
+- `/base`: Contains primitive stuff to be used later for cleaner code.
+- `/database`: Each module controls a collection on a MongoDB databse.
+- `/routes`: Contains the API endpoints for Koii, obviously.
+- `/services`: Fire up workers for blocking, long CPU-bound tasks, or tasks that needed to run separately, handles differently, or doesn't have to react to each request immediately.
+- `/utils`: Repeated code for API endpoints to use. usage will look like services, but it will be executed on the endpoint itself.
