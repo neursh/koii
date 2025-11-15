@@ -1,4 +1,5 @@
-use axum::Router;
+use axum::{ Router, http::HeaderValue };
+use tower_http::cors::CorsLayer;
 use crate::services::{ Services, WorkerSpec, WorkersAllocate };
 
 pub mod database;
@@ -37,7 +38,12 @@ async fn main() {
 
     let jwt = utils::jwt::Jwt::new();
 
-    let app = Router::new().nest("/user", routes::user::routes(services, koii_database, jwt));
+    let cors = CorsLayer::new().allow_origin(
+        "https://*.koii.space".parse::<HeaderValue>().unwrap()
+    );
+    let app = Router::new()
+        .nest("/user", routes::user::routes(services, koii_database, jwt))
+        .layer(cors);
     let listener = tokio::net::TcpListener::bind(host.clone()).await.unwrap();
 
     println!("Hello, world (world here is {})! :3", host);
