@@ -4,8 +4,15 @@ use jsonwebtoken::{ Algorithm, DecodingKey, EncodingKey, Header, Validation };
 use serde::{ Deserialize, Serialize };
 
 #[derive(Serialize, Deserialize)]
-pub struct UserClaims {
-    pub _id: String,
+pub enum TokenUsage {
+    Authorize,
+    Refresh,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct TokenClaims {
+    pub usage: TokenUsage,
+    pub id: String,
     pub exp: u64,
 }
 
@@ -34,7 +41,7 @@ impl Jwt {
         }
     }
 
-    pub fn generate(&self, claims: UserClaims) -> Result<String, ()> {
+    pub fn generate(&self, claims: TokenClaims) -> Result<String, ()> {
         if
             let Some(private_key) = &self.private_key &&
             let Ok(token) = jsonwebtoken::jws::encode(
@@ -48,9 +55,9 @@ impl Jwt {
         Err(())
     }
 
-    pub fn verify(&self, token: String) -> Result<UserClaims, ()> {
+    pub fn verify(&self, token: String) -> Result<TokenClaims, ()> {
         if let Some(public_key) = &self.public_key {
-            let data = jsonwebtoken::decode::<UserClaims>(
+            let data = jsonwebtoken::decode::<TokenClaims>(
                 token,
                 public_key,
                 &Validation::new(Algorithm::ES256)
