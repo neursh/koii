@@ -19,10 +19,10 @@ pub struct CreatePayload {
 pub async fn handler(
     State(state): State<RouteState>,
     Json(payload): Json<CreatePayload>
-) -> (StatusCode, Json<ResponseModel>) {
+) -> ResponseModel {
     // Vro I don't like too much processing yk.
     if state.semaphores.create.acquire().await.is_err() {
-        return base::response::internal_error();
+        return base::response::internal_error(None);
     }
 
     // Perform checks before processing.
@@ -34,7 +34,7 @@ pub async fn handler(
             }
         }
         _ => {
-            return base::response::internal_error();
+            return base::response::internal_error(None);
         }
     }
 
@@ -43,7 +43,8 @@ pub async fn handler(
             if user.is_some() {
                 return base::response::error(
                     StatusCode::CONFLICT,
-                    "An account with the same email already exists."
+                    "An account with the same email already exists.",
+                    None
                 );
             }
         }
@@ -55,7 +56,7 @@ pub async fn handler(
     let password_hash = match state.services.hash_pass.send(payload.password).await {
         Ok(Some(hash)) => hash,
         _ => {
-            return base::response::internal_error();
+            return base::response::internal_error(None);
         }
     };
 
@@ -69,7 +70,7 @@ pub async fn handler(
             }).await
             .is_err()
     {
-        return base::response::internal_error();
+        return base::response::internal_error(None);
     }
 
     let user = UserDocument {
@@ -82,21 +83,22 @@ pub async fn handler(
     };
 
     match state.koii_database.users.add(user).await {
-        Ok(_) => base::response::success(StatusCode::CREATED),
+        Ok(_) => base::response::success(StatusCode::CREATED, None),
         Err(error) => parse_db_fail(error),
     }
 }
 
-fn payload_checks(payload: CreatePayload) -> Result<(), (StatusCode, Json<ResponseModel>)> {
+fn payload_checks(payload: CreatePayload) -> Result<(), ResponseModel> {
     if !mailchecker::is_valid(&payload.email) {
-        return Err(base::response::error(StatusCode::BAD_REQUEST, "Invalid email provided."));
+        return Err(base::response::error(StatusCode::BAD_REQUEST, "Invalid email provided.", None));
     }
 
     if payload.password.len() < 8 {
         return Err(
             base::response::error(
                 StatusCode::BAD_REQUEST,
-                "Password must be longer than 8 characters."
+                "Password must be longer than 8 characters.",
+                None
             )
         );
     }
@@ -104,19 +106,20 @@ fn payload_checks(payload: CreatePayload) -> Result<(), (StatusCode, Json<Respon
     Ok(())
 }
 
-fn parse_db_fail(error: mongodb::error::Error) -> (StatusCode, Json<ResponseModel>) {
+fn parse_db_fail(error: mongodb::error::Error) -> ResponseModel {
     use mongodb::error::{ ErrorKind, WriteFailure };
 
     match *error.kind {
         ErrorKind::Write(WriteFailure::WriteError(ref write_error)) if write_error.code == 11000 => {
             base::response::error(
                 StatusCode::BAD_REQUEST,
-                "An account with the same email already exists."
+                "An account with the same email already exists.",
+                None
             )
         }
         _ => {
             eprintln!("Database error: {:?}", error.kind);
-            return base::response::internal_error();
+            return base::response::internal_error(None);
         }
     }
 }

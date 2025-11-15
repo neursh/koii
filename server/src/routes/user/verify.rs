@@ -1,13 +1,8 @@
 use axum::{ Json, extract::State };
 use reqwest::StatusCode;
-use serde_json::json;
 use serde::Deserialize;
 
-use crate::{
-    base::{ self, response::ResponseModel },
-    routes::user::RouteState,
-    utils::jwt::UserClaims,
-};
+use crate::{ base::{ self, response::ResponseModel }, routes::user::RouteState };
 
 #[derive(Deserialize)]
 pub struct VerifyPayload {
@@ -17,29 +12,26 @@ pub struct VerifyPayload {
 pub async fn handler(
     State(state): State<RouteState>,
     Json(payload): Json<VerifyPayload>
-) -> (StatusCode, Json<ResponseModel>) {
+) -> ResponseModel {
     match state.koii_database.users.verify(payload.verify_code).await {
         Ok(done) => {
-            if let Some(_id) = done {
-                let token = state.jwt.generate(UserClaims {
-                    _id,
-                    exp: jsonwebtoken::get_current_timestamp() + 60 * 15,
-                });
-
-                return match token {
-                    Ok(token) => base::response::result(StatusCode::OK, json!({ "token": token })),
-                    Err(_) => base::response::internal_error(),
+            if let Some(id) = done {
+                return match base::session::create(&state.jwt, id) {
+                    Ok(session_cookie) =>
+                        base::response::success(StatusCode::OK, Some(session_cookie)),
+                    Err(_) => base::response::internal_error(None),
                 };
             } else {
                 return base::response::error(
                     StatusCode::NOT_FOUND,
-                    "There's no account associated to this verify token."
+                    "There's no account associated to this verify token.",
+                    None
                 );
             }
         }
         Err(s) => {
             println!("{:?}", s);
-            return base::response::internal_error();
+            return base::response::internal_error(None);
         }
     }
 }
