@@ -7,6 +7,8 @@ use crate::{ database::KoiiDatabase, services::Services, utils::jwt::Jwt };
 
 pub mod create;
 pub mod verify;
+pub mod login;
+pub mod delete;
 
 #[derive(Clone)]
 pub struct RoutesSemaphore {
@@ -29,7 +31,8 @@ pub fn routes(services: Services, koii_database: KoiiDatabase, jwt: Jwt) -> Rout
         semaphores: RoutesSemaphore { create: Arc::new(Semaphore::new(8)) },
     };
     Router::new()
-        .route("/", post(create::handler))
+        .route("/", post(create::handler).delete(delete::handler))
         .route("/verify", patch(verify::handler))
+        .route("/login", post(login::handler))
         .with_state(state)
 }
