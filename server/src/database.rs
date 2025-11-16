@@ -1,10 +1,12 @@
-use crate::database::users::UsersStore;
+use crate::database::{ refresh::RefreshStore, users::UsersStore };
 
 pub mod users;
+pub mod refresh;
 
 #[derive(Clone)]
 pub struct KoiiDatabase {
     pub users: UsersStore,
+    pub refresh: RefreshStore,
 }
 
 pub async fn initialize() -> Result<KoiiDatabase, mongodb::error::Error> {
@@ -16,7 +18,9 @@ pub async fn initialize() -> Result<KoiiDatabase, mongodb::error::Error> {
     let mongo_database = mongo_client.database("koii");
 
     let user_space = mongo_database.collection("users");
+    let refresh_space = mongo_database.collection("refresh");
     Ok(KoiiDatabase {
         users: UsersStore::default(user_space).await.unwrap(),
+        refresh: RefreshStore::default(refresh_space).await.unwrap(),
     })
 }
