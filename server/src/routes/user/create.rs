@@ -1,5 +1,5 @@
 use serde::Deserialize;
-use axum::{ Json, extract::State, http::StatusCode };
+use axum::{ Extension, Json, extract::State, http::StatusCode };
 use mongodb::bson::{ self, doc };
 
 use crate::{
@@ -7,6 +7,7 @@ use crate::{
     database::users::UserDocument,
     routes::user::RouteState,
     services::verify_email::VerifyEmailRequest,
+    utils::middlewares::{ AuthorizationInfo, AuthorizationStatus },
 };
 use nanoid::nanoid;
 
@@ -17,9 +18,18 @@ pub struct CreatePayload {
 }
 
 pub async fn handler(
+    Extension(authorization_info): Extension<AuthorizationInfo>,
     State(state): State<RouteState>,
     Json(payload): Json<CreatePayload>
 ) -> ResponseModel {
+    if let AuthorizationStatus::Authorized = authorization_info.status {
+        return base::response::error(
+            StatusCode::FORBIDDEN,
+            "There's already an active user.",
+            None
+        );
+    }
+
     // Vro I don't like too much processing yk.
     if state.semaphores.create.acquire().await.is_err() {
         return base::response::internal_error(None);
