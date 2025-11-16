@@ -3,17 +3,17 @@ use std::{ fs::File, io::Read, path::Path };
 use jsonwebtoken::{ Algorithm, DecodingKey, EncodingKey, Header, Validation };
 use serde::{ Deserialize, Serialize };
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub enum TokenUsage {
     Authorize,
     Refresh,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct TokenClaims {
     pub usage: TokenUsage,
     pub id: String,
-    pub exp: u64,
+    pub exp: i64,
 }
 
 #[derive(Clone)]
