@@ -1,6 +1,9 @@
-use axum::{ Router, http::HeaderValue };
+use axum::{ Router, extract::DefaultBodyLimit, http::HeaderValue };
 use tower_http::cors::CorsLayer;
-use crate::services::{ Services, WorkerSpec, WorkersAllocate };
+use crate::{
+    services::{ Services, WorkerSpec, WorkersAllocate },
+    utils::middlewares::{ self, AuthorizationState },
+};
 
 pub mod database;
 pub mod services;
@@ -42,8 +45,18 @@ async fn main() {
         "https://*.koii.space".parse::<HeaderValue>().unwrap()
     );
     let app = Router::new()
-        .nest("/user", routes::user::routes(services, koii_database, jwt))
-        .layer(cors);
+        .nest("/user", routes::user::routes(services, koii_database.clone(), jwt.clone()))
+        .layer(
+            axum::middleware::from_fn_with_state(
+                AuthorizationState {
+                    jwt,
+                    refresh_store: koii_database.refresh,
+                },
+                middlewares::authorize
+            )
+        )
+        .layer(cors)
+        .layer(DefaultBodyLimit::max(2 * 1024 * 1024));
     let listener = tokio::net::TcpListener::bind(host.clone()).await.unwrap();
 
     println!("Hello, world (world here is {})! :3", host);
