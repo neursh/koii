@@ -2,69 +2,93 @@ use std::time::Duration;
 
 use axum::{ http::HeaderName, response::AppendHeaders };
 use cookie_rs::{ Cookie, cookie::SameSite };
+use mongodb::bson;
 use reqwest::header::SET_COOKIE;
 
-use crate::utils::jwt::{ Jwt, TokenClaims, TokenUsage };
+use crate::{
+    database::refresh::{ RefreshDocument, RefreshStore },
+    utils::jwt::{ Jwt, TokenClaims, TokenUsage },
+};
+
+/// 15 minutes
+pub const TOKEN_MAX_AGE: i64 = 900;
+/// 15 days
+pub const REFRESH_MAX_AGE: i64 = 1296000;
 
 pub enum SessionError {
+    DatabaseError,
     BadRefreshToken,
-    InvalidPrivateKey,
 }
 
 /// Will panic if jwt isn't supplied with a valid private key.
-pub fn create(
+pub async fn create(
+    refresh_store: &RefreshStore,
     jwt: &Jwt,
     id: String
 ) -> Result<AppendHeaders<Vec<(HeaderName, String)>>, SessionError> {
-    let created_time = jsonwebtoken::get_current_timestamp();
+    let created_at = jsonwebtoken::get_current_timestamp() as i64;
 
-    let token = if
-        let Ok(token) = jwt.generate(TokenClaims {
+    let token = jwt
+        .generate(TokenClaims {
             usage: TokenUsage::Authorize,
             id: id.clone(),
-            exp: created_time + 21600, // 6 hours
+            exp: created_at + TOKEN_MAX_AGE,
         })
-    {
-        token
-    } else {
-        return Err(SessionError::InvalidPrivateKey);
-    };
+        .unwrap();
 
-    let refresh = if
-        let Ok(refresh) = jwt.generate(TokenClaims {
+    let refresh = jwt
+        .generate(TokenClaims {
             usage: TokenUsage::Refresh,
-            id,
-            exp: created_time + 1296000, // 15 days
+            id: id.clone(),
+            exp: created_at + REFRESH_MAX_AGE,
         })
+        .unwrap();
+
+    let token_cookie = construct_cookie("token", token, TOKEN_MAX_AGE);
+    let refresh_cookie = construct_cookie("refresh", refresh, REFRESH_MAX_AGE);
+
+    return match
+        refresh_store.add(RefreshDocument {
+            user_id: id,
+            created_at: bson::DateTime::from_millis(created_at * 1000),
+        }).await
     {
-        refresh
-    } else {
-        return Err(SessionError::InvalidPrivateKey);
+        Ok(_) => Ok(AppendHeaders(vec![(SET_COOKIE, token_cookie), (SET_COOKIE, refresh_cookie)])),
+        Err(_) => Err(SessionError::DatabaseError),
     };
-
-    let token_cookie = construct_cookie("token", token, 21600);
-    let refresh_cookie = construct_cookie("refresh", refresh, 1296000);
-
-    Ok(AppendHeaders(vec![(SET_COOKIE, token_cookie), (SET_COOKIE, refresh_cookie)]))
 }
 
-pub fn refresh(
+/// Will panic if jwt isn't supplied with a valid private key.
+pub async fn refresh_from_claims(
+    refresh_store: &RefreshStore,
+    jwt: &Jwt,
+    refresh: TokenClaims
+) -> Result<AppendHeaders<Vec<(HeaderName, String)>>, SessionError> {
+    if let TokenUsage::Refresh = refresh.usage {
+        return create(refresh_store, jwt, refresh.id).await;
+    }
+    Err(SessionError::BadRefreshToken)
+}
+
+/// Will panic if jwt isn't supplied with a valid private key.
+pub async fn refresh(
+    refresh_store: &RefreshStore,
     jwt: &Jwt,
     refresh: String
 ) -> Result<AppendHeaders<Vec<(HeaderName, String)>>, SessionError> {
     if let Ok(refresh_claims) = jwt.verify(refresh) {
         if let TokenUsage::Refresh = refresh_claims.usage {
-            return create(jwt, refresh_claims.id);
+            return create(refresh_store, jwt, refresh_claims.id).await;
         }
     }
     Err(SessionError::BadRefreshToken)
 }
 
-fn construct_cookie(name: &str, value: String, max_age: u64) -> String {
+fn construct_cookie(name: &str, value: String, max_age: i64) -> String {
     Cookie::builder(name, value)
         .domain(".koii.space")
         .path("/")
-        .max_age(Duration::from_secs(max_age))
+        .max_age(Duration::from_secs(max_age as u64))
         .same_site(SameSite::Lax)
         .http_only(true)
         .secure(true)
