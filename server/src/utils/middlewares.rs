@@ -5,9 +5,10 @@ use axum::{
     response::IntoResponse,
 };
 use cookie_rs::Cookie;
+use mongodb::bson;
 
 use crate::{
-    base::{ self, session::TOKEN_MAX_AGE },
+    base::{ self, session::{ REFRESH_MAX_AGE, TOKEN_MAX_AGE } },
     database::refresh::RefreshStore,
     utils::jwt::{ Jwt, TokenClaims, TokenUsage },
 };
@@ -39,19 +40,12 @@ pub async fn authorize(
     next: Next
 ) -> impl IntoResponse {
     let raw_cookies = headers.get("cookie");
+    let mut refreshed_tokens = None;
 
     if let Some(value) = raw_cookies && let Ok(value_str) = value.to_str() {
-        let (refresh_cookies, info) = parse_cookies(
-            &state.refresh_store,
-            &state.jwt,
-            value_str
-        ).await;
+        let (refreshed, info) = parse_cookies(&state.refresh_store, &state.jwt, value_str).await;
 
-        if let Some(refresh_cookies) = refresh_cookies {
-            for item in refresh_cookies {
-                request.headers_mut().append(item.0, HeaderValue::from_str(&item.1).unwrap());
-            }
-        }
+        refreshed_tokens = refreshed;
         request.extensions_mut().insert(info);
     } else {
         request.extensions_mut().insert(AuthorizationInfo {
@@ -60,7 +54,14 @@ pub async fn authorize(
         });
     }
 
-    let response = next.run(request).await;
+    let mut response = next.run(request).await;
+
+    if let Some(refreshed_tokens) = refreshed_tokens {
+        for item in refreshed_tokens {
+            response.headers_mut().append(item.0, HeaderValue::from_str(&item.1).unwrap());
+        }
+    }
+
     response
 }
 
@@ -101,7 +102,12 @@ async fn parse_cookies(
 
     // Recover authorization status when there is a refresh token.
     if let Some(refresh) = refresh && let AuthorizationStatus::Unauthorized = status {
-        let permit = match refresh_store.permit(&refresh.id, refresh.exp).await {
+        let permit = match
+            refresh_store.permit(
+                &refresh.id,
+                bson::DateTime::from_millis((refresh.exp - REFRESH_MAX_AGE) * 1000)
+            ).await
+        {
             Ok(permit) => permit,
             Err(_) => {
                 status = AuthorizationStatus::RefreshFailed;
