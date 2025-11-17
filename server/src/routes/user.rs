@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use axum::{ Router, routing::{ patch, post } };
+use axum::{ Router, routing::{ get, patch, post } };
 use tokio::sync::Semaphore;
 
 use crate::{ database::KoiiDatabase, services::Services, utils::jwt::Jwt };
@@ -8,6 +8,7 @@ use crate::{ database::KoiiDatabase, services::Services, utils::jwt::Jwt };
 pub mod create;
 pub mod verify;
 pub mod login;
+pub mod logout;
 pub mod delete;
 
 #[derive(Clone)]
@@ -18,15 +19,15 @@ pub struct RoutesSemaphore {
 #[derive(Clone)]
 pub struct RouteState {
     pub services: Services,
-    pub koii_database: KoiiDatabase,
+    pub database: KoiiDatabase,
     pub jwt: Jwt,
     pub semaphores: RoutesSemaphore,
 }
 
-pub fn routes(services: Services, koii_database: KoiiDatabase, jwt: Jwt) -> Router {
+pub fn routes(services: Services, database: KoiiDatabase, jwt: Jwt) -> Router {
     let state = RouteState {
         services,
-        koii_database,
+        database,
         jwt,
         semaphores: RoutesSemaphore { create: Arc::new(Semaphore::new(8)) },
     };
@@ -34,5 +35,6 @@ pub fn routes(services: Services, koii_database: KoiiDatabase, jwt: Jwt) -> Rout
         .route("/", post(create::handler).delete(delete::handler))
         .route("/verify", patch(verify::handler))
         .route("/login", post(login::handler))
+        .route("/logout", get(logout::handler))
         .with_state(state)
 }

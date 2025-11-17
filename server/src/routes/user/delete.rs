@@ -1,5 +1,9 @@
-use axum::{ Extension, extract::State, response::AppendHeaders };
-use reqwest::{ StatusCode, header::SET_COOKIE };
+use axum::{
+    Extension,
+    extract::State,
+    http::{ StatusCode, header::SET_COOKIE },
+    response::AppendHeaders,
+};
 
 use crate::{
     base::{ self, response::ResponseModel },
@@ -20,7 +24,7 @@ pub async fn handler(
 
     let token = authorization_info.token.unwrap();
 
-    let result = match state.koii_database.users.delete(token.id).await {
+    let result = match state.database.users.delete(token.id).await {
         Ok(result) => result,
         Err(error) => {
             eprintln!("{}", error);

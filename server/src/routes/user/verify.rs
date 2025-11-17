@@ -1,5 +1,4 @@
-use axum::{ Extension, Json, extract::State };
-use reqwest::StatusCode;
+use axum::{ Extension, Json, extract::State, http::StatusCode };
 use serde::Deserialize;
 
 use crate::{
@@ -26,11 +25,11 @@ pub async fn handler(
         );
     }
 
-    return match state.koii_database.users.verify(payload.verify_code).await {
+    return match state.database.users.verify(payload.verify_code).await {
         Ok(done) => {
             match done {
                 Some(id) =>
-                    match base::session::create(&state.koii_database.refresh, &state.jwt, id).await {
+                    match base::session::create(&state.database.refresh, &state.jwt, id).await {
                         Ok(headers) => base::response::success(StatusCode::OK, Some(headers)),
                         Err(_) => base::response::internal_error(None),
                     }

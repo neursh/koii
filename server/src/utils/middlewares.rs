@@ -24,6 +24,7 @@ pub enum AuthorizationStatus {
 #[derive(Clone)]
 pub struct AuthorizationInfo {
     pub token: Option<TokenClaims>,
+    pub refresh: Option<TokenClaims>,
     pub status: AuthorizationStatus,
 }
 
@@ -50,6 +51,7 @@ pub async fn authorize(
     } else {
         request.extensions_mut().insert(AuthorizationInfo {
             token: None,
+            refresh: None,
             status: AuthorizationStatus::Unauthorized,
         });
     }
@@ -92,7 +94,7 @@ async fn parse_cookies(
         }
     }
 
-    let mut status = if token.is_some() {
+    let mut status = if token.is_some() && refresh.is_some() {
         AuthorizationStatus::Authorized
     } else {
         AuthorizationStatus::Unauthorized
@@ -101,7 +103,7 @@ async fn parse_cookies(
     let mut headers = None;
 
     // Recover authorization status when there is a refresh token.
-    if let Some(refresh) = refresh && let AuthorizationStatus::Unauthorized = status {
+    if let AuthorizationStatus::Unauthorized = status && let Some(refresh) = refresh.clone() {
         let permit = match
             refresh_store.permit(
                 &refresh.id,
@@ -119,10 +121,11 @@ async fn parse_cookies(
             match base::session::refresh_from_claims(refresh_store, jwt, refresh.clone()).await {
                 Ok(cookies) => {
                     headers = Some(cookies.0);
+                    // Recreate the token with minor time mismatch.
                     token = Some(TokenClaims {
                         usage: TokenUsage::Authorize,
                         id: refresh.id,
-                        exp: (jsonwebtoken::get_current_timestamp() as i64) + TOKEN_MAX_AGE,
+                        exp: (jsonwebtoken::get_current_timestamp() as i64) + TOKEN_MAX_AGE, // Approx time
                     });
                     status = AuthorizationStatus::Authorized;
                 }
@@ -137,6 +140,7 @@ async fn parse_cookies(
         headers,
         AuthorizationInfo {
             token,
+            refresh,
             status,
         },
     )

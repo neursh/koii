@@ -1,9 +1,8 @@
 use std::time::Duration;
 
-use axum::{ http::HeaderName, response::AppendHeaders };
+use axum::{ http::{ HeaderName, header::SET_COOKIE }, response::AppendHeaders };
 use cookie_rs::{ Cookie, cookie::SameSite };
 use mongodb::bson;
-use reqwest::header::SET_COOKIE;
 
 use crate::{
     database::refresh::{ RefreshDocument, RefreshStore },

@@ -18,7 +18,7 @@ async fn main() {
     let host = std::env::var("HOST").expect("HOST must be set in .env file");
 
     println!("Connecting to DB...");
-    let koii_database = database::initialize().await.unwrap();
+    let database = database::initialize().await.unwrap();
     println!("DB connection established.");
 
     let services = Services::new(WorkersAllocate {
@@ -45,12 +45,12 @@ async fn main() {
         "https://*.koii.space".parse::<HeaderValue>().unwrap()
     );
     let app = Router::new()
-        .nest("/user", routes::user::routes(services, koii_database.clone(), jwt.clone()))
+        .nest("/user", routes::user::routes(services, database.clone(), jwt.clone()))
         .layer(
             axum::middleware::from_fn_with_state(
                 AuthorizationState {
                     jwt,
-                    refresh_store: koii_database.refresh,
+                    refresh_store: database.refresh,
                 },
                 middlewares::authorize
             )

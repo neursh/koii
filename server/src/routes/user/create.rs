@@ -7,7 +7,7 @@ use crate::{
     database::users::UserDocument,
     routes::user::RouteState,
     services::verify_email::VerifyEmailRequest,
-    utils::middlewares::{ AuthorizationInfo, AuthorizationStatus },
+    utils::{ checks::credentials_checks, middlewares::{ AuthorizationInfo, AuthorizationStatus } },
 };
 use nanoid::nanoid;
 
@@ -37,7 +37,11 @@ pub async fn handler(
 
     // Perform checks before processing.
     let payload_task = payload.clone();
-    match tokio::task::spawn_blocking(|| payload_checks(payload_task)).await {
+    match
+        tokio::task::spawn_blocking(move ||
+            credentials_checks(&payload_task.email, &payload_task.password)
+        ).await
+    {
         Ok(result) => {
             if let Err(bad) = result {
                 return bad;
@@ -48,7 +52,7 @@ pub async fn handler(
         }
     }
 
-    match state.koii_database.users.get_one(doc! { "email": &payload.email }).await {
+    match state.database.users.get_one(doc! { "email": &payload.email }).await {
         Ok(user) => {
             if user.is_some() {
                 return base::response::error(
@@ -92,28 +96,10 @@ pub async fn handler(
         created_at: None,
     };
 
-    match state.koii_database.users.add(user).await {
+    match state.database.users.add(user).await {
         Ok(_) => base::response::success(StatusCode::CREATED, None),
         Err(error) => parse_db_fail(error),
     }
-}
-
-fn payload_checks(payload: CreatePayload) -> Result<(), ResponseModel> {
-    if !mailchecker::is_valid(&payload.email) {
-        return Err(base::response::error(StatusCode::BAD_REQUEST, "Invalid email provided.", None));
-    }
-
-    if payload.password.len() < 8 {
-        return Err(
-            base::response::error(
-                StatusCode::BAD_REQUEST,
-                "Password must be longer than 8 characters.",
-                None
-            )
-        );
-    }
-
-    Ok(())
 }
 
 fn parse_db_fail(error: mongodb::error::Error) -> ResponseModel {
