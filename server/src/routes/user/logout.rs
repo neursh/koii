@@ -25,6 +25,7 @@ pub async fn handler(
 
     let refresh = authorization_info.refresh.unwrap();
 
+    // Invalidate the refresh token too.
     if
         let Err(error) = state.database.refresh.permit(
             &refresh.id,
