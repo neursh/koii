@@ -16,7 +16,6 @@ pub struct TokenClaims {
     pub exp: i64,
 }
 
-#[derive(Clone)]
 pub struct Jwt {
     private_key: Option<EncodingKey>,
     public_key: Option<DecodingKey>,
