@@ -3,7 +3,6 @@ use crate::database::{ refresh::RefreshStore, users::UsersStore };
 pub mod users;
 pub mod refresh;
 
-#[derive(Clone)]
 pub struct KoiiDatabase {
     pub users: UsersStore,
     pub refresh: RefreshStore,

@@ -4,7 +4,7 @@ use serde::Deserialize;
 
 use crate::{
     base::{ self, response::ResponseModel },
-    routes::user::RouteState,
+    routes::user::UserRoutesState,
     services::verify_pass::VerifyPassRequest,
     utils::{ checks::credentials_checks, middlewares::{ AuthorizationInfo, AuthorizationStatus } },
 };
@@ -17,7 +17,7 @@ pub struct LoginPayload {
 
 pub async fn handler(
     Extension(authorization_info): Extension<AuthorizationInfo>,
-    State(state): State<RouteState>,
+    State(state): State<UserRoutesState>,
     Json(payload): Json<LoginPayload>
 ) -> ResponseModel {
     if let AuthorizationStatus::Authorized = authorization_info.status {
@@ -44,7 +44,7 @@ pub async fn handler(
         }
     }
 
-    let edge_user = state.database.users.get_one(
+    let edge_user = state.app.database.users.get_one(
         bson::doc! {
             "email": payload.email
         }
@@ -69,7 +69,7 @@ pub async fn handler(
     };
 
     let result = match
-        state.services.verify_pass.send(VerifyPassRequest {
+        state.app.services.verify_pass.send(VerifyPassRequest {
             password: payload.password,
             hash: user.password_hash,
         }).await
@@ -81,7 +81,9 @@ pub async fn handler(
     };
 
     if result {
-        return match base::session::create(&state.database.refresh, &state.jwt, user._id).await {
+        return match
+            base::session::create(&state.app.database.refresh, &state.app.jwt, user._id).await
+        {
             Ok(headers) => base::response::success(StatusCode::OK, Some(headers)),
             Err(_) => base::response::internal_error(None),
         };

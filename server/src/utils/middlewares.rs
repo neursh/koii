@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use axum::{
     extract::{ Request, State },
     http::{ HeaderMap, HeaderName, HeaderValue },
@@ -8,6 +10,7 @@ use cookie_rs::Cookie;
 use mongodb::bson;
 
 use crate::{
+    AppState,
     base::{ self, session::{ REFRESH_MAX_AGE, TOKEN_MAX_AGE } },
     database::refresh::RefreshStore,
     utils::jwt::{ Jwt, TokenClaims, TokenUsage },
@@ -28,14 +31,8 @@ pub struct AuthorizationInfo {
     pub status: AuthorizationStatus,
 }
 
-#[derive(Clone)]
-pub struct AuthorizationState {
-    pub jwt: Jwt,
-    pub refresh_store: RefreshStore,
-}
-
 pub async fn authorize(
-    State(state): State<AuthorizationState>,
+    State(state): State<Arc<AppState>>,
     headers: HeaderMap,
     mut request: Request,
     next: Next
@@ -44,7 +41,7 @@ pub async fn authorize(
     let mut refreshed_tokens = None;
 
     if let Some(value) = raw_cookies && let Ok(value_str) = value.to_str() {
-        let (refreshed, info) = parse_cookies(&state.refresh_store, &state.jwt, value_str).await;
+        let (refreshed, info) = parse_cookies(&state.database.refresh, &state.jwt, value_str).await;
 
         refreshed_tokens = refreshed;
         request.extensions_mut().insert(info);

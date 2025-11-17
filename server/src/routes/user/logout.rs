@@ -8,13 +8,13 @@ use mongodb::bson;
 
 use crate::{
     base::{ self, response::ResponseModel, session::REFRESH_MAX_AGE },
-    routes::user::RouteState,
+    routes::user::UserRoutesState,
     utils::middlewares::{ AuthorizationInfo, AuthorizationStatus },
 };
 
 pub async fn handler(
     Extension(authorization_info): Extension<AuthorizationInfo>,
-    State(state): State<RouteState>
+    State(state): State<UserRoutesState>
 ) -> ResponseModel {
     match authorization_info.status {
         AuthorizationStatus::Authorized => (),
@@ -27,7 +27,7 @@ pub async fn handler(
 
     // Invalidate the refresh token too.
     if
-        let Err(error) = state.database.refresh.permit(
+        let Err(error) = state.app.database.refresh.permit(
             &refresh.id,
             bson::DateTime::from_millis((refresh.exp - REFRESH_MAX_AGE) * 1000)
         ).await

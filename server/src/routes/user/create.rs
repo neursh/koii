@@ -5,7 +5,7 @@ use mongodb::bson::{ self, doc };
 use crate::{
     base::{ self, response::ResponseModel },
     database::users::UserDocument,
-    routes::user::RouteState,
+    routes::user::UserRoutesState,
     services::verify_email::VerifyEmailRequest,
     utils::{ checks::credentials_checks, middlewares::{ AuthorizationInfo, AuthorizationStatus } },
 };
@@ -19,7 +19,7 @@ pub struct CreatePayload {
 
 pub async fn handler(
     Extension(authorization_info): Extension<AuthorizationInfo>,
-    State(state): State<RouteState>,
+    State(state): State<UserRoutesState>,
     Json(payload): Json<CreatePayload>
 ) -> ResponseModel {
     if let AuthorizationStatus::Authorized = authorization_info.status {
@@ -52,7 +52,7 @@ pub async fn handler(
         }
     }
 
-    match state.database.users.get_one(doc! { "email": &payload.email }).await {
+    match state.app.database.users.get_one(doc! { "email": &payload.email }).await {
         Ok(user) => {
             if user.is_some() {
                 return base::response::error(
@@ -67,7 +67,7 @@ pub async fn handler(
         }
     }
 
-    let password_hash = match state.services.hash_pass.send(payload.password).await {
+    let password_hash = match state.app.services.hash_pass.send(payload.password).await {
         Ok(Some(hash)) => hash,
         _ => {
             return base::response::internal_error(None);
@@ -77,7 +77,7 @@ pub async fn handler(
     let verify_code = nanoid!(64);
 
     if
-        state.services.verify_email
+        state.app.services.verify_email
             .send_ignore_result(VerifyEmailRequest {
                 email: payload.email.clone(),
                 verify_code: verify_code.clone(),
@@ -94,9 +94,10 @@ pub async fn handler(
         verify_requested: Some(bson::DateTime::now()),
         verify_code: Some(verify_code),
         created_at: None,
+        accept_refresh_after: None,
     };
 
-    match state.database.users.add(user).await {
+    match state.app.database.users.add(user).await {
         Ok(_) => base::response::success(StatusCode::CREATED, None),
         Err(error) => parse_db_fail(error),
     }

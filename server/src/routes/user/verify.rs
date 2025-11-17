@@ -3,7 +3,7 @@ use serde::Deserialize;
 
 use crate::{
     base::{ self, response::ResponseModel },
-    routes::user::RouteState,
+    routes::user::UserRoutesState,
     utils::middlewares::{ AuthorizationInfo, AuthorizationStatus },
 };
 
@@ -14,7 +14,7 @@ pub struct VerifyPayload {
 
 pub async fn handler(
     Extension(authorization_info): Extension<AuthorizationInfo>,
-    State(state): State<RouteState>,
+    State(state): State<UserRoutesState>,
     Json(payload): Json<VerifyPayload>
 ) -> ResponseModel {
     if let AuthorizationStatus::Authorized = authorization_info.status {
@@ -25,11 +25,13 @@ pub async fn handler(
         );
     }
 
-    return match state.database.users.verify(payload.verify_code).await {
+    return match state.app.database.users.verify(payload.verify_code).await {
         Ok(done) => {
             match done {
                 Some(id) =>
-                    match base::session::create(&state.database.refresh, &state.jwt, id).await {
+                    match
+                        base::session::create(&state.app.database.refresh, &state.app.jwt, id).await
+                    {
                         Ok(headers) => base::response::success(StatusCode::OK, Some(headers)),
                         Err(_) => base::response::internal_error(None),
                     }

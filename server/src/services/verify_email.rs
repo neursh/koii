@@ -2,7 +2,6 @@ use std::{ collections::HashMap, thread, time::Duration };
 use resend_rs::{ Resend, types::{ CreateEmailBaseOptions, EmailTemplate } };
 use tokio::sync::{ mpsc, oneshot };
 
-#[derive(Clone)]
 pub struct VerifyEmailRequest {
     pub email: String,
     pub verify_code: String,

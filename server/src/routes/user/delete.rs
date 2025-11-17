@@ -7,13 +7,13 @@ use axum::{
 
 use crate::{
     base::{ self, response::ResponseModel },
-    routes::user::RouteState,
+    routes::user::UserRoutesState,
     utils::middlewares::{ AuthorizationInfo, AuthorizationStatus },
 };
 
 pub async fn handler(
     Extension(authorization_info): Extension<AuthorizationInfo>,
-    State(state): State<RouteState>
+    State(state): State<UserRoutesState>
 ) -> ResponseModel {
     match authorization_info.status {
         AuthorizationStatus::Authorized => (),
@@ -24,7 +24,7 @@ pub async fn handler(
 
     let token = authorization_info.token.unwrap();
 
-    let result = match state.database.users.delete(token.id).await {
+    let result = match state.app.database.users.delete(token.id).await {
         Ok(result) => result,
         Err(error) => {
             eprintln!("{}", error);

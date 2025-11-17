@@ -3,7 +3,7 @@ use std::sync::Arc;
 use axum::{ Router, routing::{ get, patch, post } };
 use tokio::sync::Semaphore;
 
-use crate::{ database::KoiiDatabase, services::Services, utils::jwt::Jwt };
+use crate::AppState;
 
 pub mod create;
 pub mod verify;
@@ -17,18 +17,14 @@ pub struct RoutesSemaphore {
 }
 
 #[derive(Clone)]
-pub struct RouteState {
-    pub services: Services,
-    pub database: KoiiDatabase,
-    pub jwt: Jwt,
+pub struct UserRoutesState {
+    pub app: Arc<AppState>,
     pub semaphores: RoutesSemaphore,
 }
 
-pub fn routes(services: Services, database: KoiiDatabase, jwt: Jwt) -> Router {
-    let state = RouteState {
-        services,
-        database,
-        jwt,
+pub fn routes(app_state: Arc<AppState>) -> Router {
+    let state = UserRoutesState {
+        app: app_state,
         semaphores: RoutesSemaphore { create: Arc::new(Semaphore::new(8)) },
     };
     Router::new()

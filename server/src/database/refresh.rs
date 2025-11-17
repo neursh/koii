@@ -5,13 +5,12 @@ use serde::{ Deserialize, Serialize };
 
 use crate::base::session::REFRESH_MAX_AGE;
 
-#[derive(Clone, Deserialize, Serialize)]
+#[derive(Deserialize, Serialize)]
 pub struct RefreshDocument {
     pub user_id: String,
     pub created_at: bson::DateTime,
 }
 
-#[derive(Clone)]
 pub struct RefreshStore {
     endpoint: mongodb::Collection<RefreshDocument>,
 }

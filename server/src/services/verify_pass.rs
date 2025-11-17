@@ -3,7 +3,6 @@ use std::{ sync::Arc, thread };
 use argon2::{ Argon2, PasswordHash, PasswordVerifier };
 use tokio::sync::{ Mutex, mpsc, oneshot };
 
-#[derive(Clone)]
 pub struct VerifyPassRequest {
   pub password: String,
   pub hash: String,
