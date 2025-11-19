@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use mongodb::{ IndexModel, bson::{ self, DateTime, Document }, options::IndexOptions };
+use mongodb::{ IndexModel, bson::{ self, DateTime, Document }, options::{ IndexOptions } };
 use serde::{ Deserialize, Serialize };
 
 #[derive(Deserialize, Serialize)]
@@ -12,7 +12,8 @@ pub struct UserDocument {
     pub password_hash: String,
 
     /// The assigned unique ID to that user.
-    pub _id: String,
+    #[serde(rename = "_id")]
+    pub id: String,
 
     /// The time when the verify key was sent, this value gets deleted when
     /// the account was verifed. (TTL: 10 minutes)
@@ -83,6 +84,7 @@ impl UsersStore {
                 bson::doc! {
                 "$set": {
                     "created_at": DateTime::now(),
+                    "accept_refresh_after": DateTime::now(),
                 },
                 "$unset": {
                     "verify_requested": "",
@@ -91,7 +93,7 @@ impl UsersStore {
             }
             ).await?;
             if result.modified_count == 1 {
-                return Ok(Some(target._id));
+                return Ok(Some(target.id));
             }
         }
 
@@ -105,7 +107,29 @@ impl UsersStore {
         self.endpoint.find_one(query).await
     }
 
-    pub async fn refresh_check() {}
+    pub async fn update_accept_refresh(&self, id: String) -> Result<bool, mongodb::error::Error> {
+        Ok(
+            self.endpoint.update_one(
+                bson::doc! { "_id": id },
+                bson::doc! { "accept_refresh_after": DateTime::now() }
+            ).await?.modified_count == 1
+        )
+    }
+
+    pub async fn check_accept_refresh(
+        &self,
+        id: &str,
+        checking: DateTime
+    ) -> Result<bool, mongodb::error::Error> {
+        if
+            let Some(record) = self.get_one(bson::doc! { "id": id }).await? &&
+            let Some(checker) = record.accept_refresh_after
+        {
+            return Ok(checking.timestamp_millis() >= checker.timestamp_millis());
+        }
+
+        Ok(false)
+    }
 
     pub async fn delete(&self, id: String) -> Result<bool, mongodb::error::Error> {
         Ok(self.endpoint.delete_one(bson::doc! { "_id": id }).await?.deleted_count == 1)

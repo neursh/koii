@@ -6,7 +6,7 @@ use crate::{
     base::{ self, response::ResponseModel },
     routes::user::UserRoutesState,
     services::verify_pass::VerifyPassRequest,
-    utils::{ checks::credentials_checks, middlewares::{ AuthorizationInfo, AuthorizationStatus } },
+    utils::{ checks::credentials_checks, cookie_query::{ AuthorizationInfo, AuthorizationStatus } },
 };
 
 #[derive(Deserialize, Clone)]
@@ -82,7 +82,7 @@ pub async fn handler(
 
     if result {
         return match
-            base::session::create(&state.app.database.refresh, &state.app.jwt, user._id).await
+            base::session::create(&state.app.database.refresh, &state.app.jwt, user.id).await
         {
             Ok(headers) => base::response::success(StatusCode::OK, Some(headers)),
             Err(_) => base::response::internal_error(None),
