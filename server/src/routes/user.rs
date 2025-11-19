@@ -8,6 +8,7 @@ use crate::AppState;
 pub mod create;
 pub mod verify;
 pub mod login;
+pub mod refresh;
 pub mod logout;
 pub mod delete;
 
@@ -32,5 +33,6 @@ pub fn routes(app_state: Arc<AppState>) -> Router {
         .route("/verify", patch(verify::handler))
         .route("/login", post(login::handler))
         .route("/logout", get(logout::handler))
+        .route("/refresh", get(refresh::handler))
         .with_state(state)
 }
