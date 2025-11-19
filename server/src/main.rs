@@ -5,7 +5,7 @@ use tower_http::cors::CorsLayer;
 use crate::{
     database::KoiiDatabase,
     services::{ Services, WorkerSpec, WorkersAllocate },
-    utils::{ jwt::Jwt, middlewares },
+    utils::{ jwt::Jwt, cookie_query },
 };
 
 pub mod database;
@@ -54,7 +54,7 @@ async fn main() {
     );
     let app = Router::new()
         .nest("/user", routes::user::routes(app_state.clone()))
-        .layer(axum::middleware::from_fn_with_state(app_state.clone(), middlewares::authorize))
+        .layer(axum::middleware::from_fn_with_state(app_state.clone(), cookie_query::authorize))
         .layer(cors)
         .layer(DefaultBodyLimit::max(2 * 1024 * 1024));
     let listener = tokio::net::TcpListener::bind(host.clone()).await.unwrap();

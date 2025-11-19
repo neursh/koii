@@ -1,3 +1,3 @@
 pub mod jwt;
-pub mod middlewares;
+pub mod cookie_query;
 pub mod checks;
