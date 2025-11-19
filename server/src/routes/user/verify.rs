@@ -4,7 +4,7 @@ use serde::Deserialize;
 use crate::{
     base::{ self, response::ResponseModel },
     routes::user::UserRoutesState,
-    utils::middlewares::{ AuthorizationInfo, AuthorizationStatus },
+    utils::cookie_query::{ AuthorizationInfo, AuthorizationStatus },
 };
 
 #[derive(Deserialize)]

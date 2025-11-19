@@ -7,7 +7,7 @@ use crate::{
     database::users::UserDocument,
     routes::user::UserRoutesState,
     services::verify_email::VerifyEmailRequest,
-    utils::{ checks::credentials_checks, middlewares::{ AuthorizationInfo, AuthorizationStatus } },
+    utils::{ checks::credentials_checks, cookie_query::{ AuthorizationInfo, AuthorizationStatus } },
 };
 use nanoid::nanoid;
 
@@ -88,7 +88,7 @@ pub async fn handler(
     }
 
     let user = UserDocument {
-        _id: nanoid!(48),
+        id: nanoid!(48),
         email: payload.email,
         password_hash,
         verify_requested: Some(bson::DateTime::now()),
