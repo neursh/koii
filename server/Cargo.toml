@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 argon2 = "0.5.3"
 axum = "0.8.6"
+axum-server = { version = "0.7.3", features = ["tls-rustls"] }
 cookie-rs = "0.4.1"
 dashmap = "6.1.0"
 dotenv = "0.15.0"
