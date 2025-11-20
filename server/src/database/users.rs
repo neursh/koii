@@ -122,7 +122,7 @@ impl UsersStore {
         checking: DateTime
     ) -> Result<bool, mongodb::error::Error> {
         if
-            let Some(record) = self.get_one(bson::doc! { "id": id }).await? &&
+            let Some(record) = self.get_one(bson::doc! { "_id": id }).await? &&
             let Some(checker) = record.accept_refresh_after
         {
             return Ok(checking.timestamp_millis() >= checker.timestamp_millis());
