@@ -1499,6 +1499,7 @@ dependencies = [
  "mongodb",
  "nanoid",
  "resend-rs",
+ "rustls",
  "serde",
  "serde_json",
  "tokio",
