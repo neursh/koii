@@ -24,3 +24,9 @@ For authenticated users, there will be rate limits too, though it won't have muc
 - `/routes`: Contains the API endpoints for Koii, obviously.
 - `/services`: Fire up workers for blocking, long CPU-bound tasks, or tasks that needed to run separately, handles differently, or doesn't have to react to each request immediately.
 - `/utils`: Repeated code for API endpoints to use. usage will look like services, but it will be executed on the endpoint itself.
+
+## Development status
+- [x] Email service & database.
+- [x] Basic user operations. (create, verify, login, refresh, logout, delete)
+- [ ] Advanced user operations. (edit password, edit info, 2FA)
+- [ ] OAuth2.
