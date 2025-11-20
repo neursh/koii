@@ -50,9 +50,15 @@ async fn main() {
         jwt: utils::jwt::Jwt::new(),
     });
 
-    let cors = CorsLayer::new().allow_origin(
-        "https://*.koii.space".parse::<HeaderValue>().unwrap()
-    );
+    let cors = CorsLayer::new()
+        .allow_origin(
+            tower_http::cors::AllowOrigin::predicate(|origin: &HeaderValue, _| {
+                let origin = origin.as_bytes();
+                origin == b"https://koii.space" ||
+                    (origin.starts_with(b"https://") && origin.ends_with(b".koii.space"))
+            })
+        )
+        .allow_credentials(true);
     let app = Router::new()
         .nest("/user", routes::user::routes(app_state.clone()))
         .route(
