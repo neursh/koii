@@ -1,6 +1,7 @@
-use std::sync::Arc;
+use std::{ env::args, sync::Arc };
 
-use axum::{ Router, extract::DefaultBodyLimit, http::HeaderValue };
+use axum::{ Router, extract::DefaultBodyLimit, http::HeaderValue, routing::get };
+use axum_server::tls_rustls::RustlsConfig;
 use tower_http::cors::CorsLayer;
 use crate::{
     database::KoiiDatabase,
@@ -54,12 +55,34 @@ async fn main() {
     );
     let app = Router::new()
         .nest("/user", routes::user::routes(app_state.clone()))
+        .route(
+            "/",
+            get(async || "hi")
+        )
         .layer(axum::middleware::from_fn_with_state(app_state.clone(), cookie_query::authorize))
         .layer(cors)
         .layer(DefaultBodyLimit::max(2 * 1024 * 1024));
-    let listener = tokio::net::TcpListener::bind(host.clone()).await.unwrap();
 
     println!("Hello, world (world here is {})! :3", host);
 
-    axum::serve(listener, app).await.unwrap();
+    let mode: Vec<String> = args().collect();
+    match mode[1].as_str() {
+        "online" => {
+            println!("Serving in online mode...");
+            rustls::crypto::ring::default_provider().install_default().unwrap();
+            let tls_config = RustlsConfig::from_pem_file(
+                "cf-ocert.pem",
+                "cf-okey.pem"
+            ).await.unwrap();
+            axum_server
+                ::bind_rustls(host.parse().unwrap(), tls_config)
+                .serve(app.into_make_service()).await
+                .unwrap();
+        }
+        "offline" => {
+            println!("Serving in offline mode...");
+            axum_server::bind(host.parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+        }
+        _ => panic!("Invalid mode."),
+    }
 }
