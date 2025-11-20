@@ -18,7 +18,7 @@ pub struct TokenClaims {
 
 pub struct Jwt {
     private_key: Option<EncodingKey>,
-    public_key: Option<DecodingKey>,
+    public_key: DecodingKey,
 }
 impl Jwt {
     pub fn new() -> Self {
@@ -27,51 +27,43 @@ impl Jwt {
                 if let Some(private_keyring) = quick_read("private.kc.pem") {
                     Some(EncodingKey::from_ec_pem(&private_keyring).unwrap())
                 } else {
+                    println!("No private key for JWT installed.");
                     None
                 }
             },
             public_key: {
-                if let Some(public_keyring) = quick_read("public.kc.pem") {
-                    Some(DecodingKey::from_ec_pem(&public_keyring).unwrap())
-                } else {
-                    None
-                }
+                DecodingKey::from_ec_pem(
+                    &quick_read("public.kc.pem").expect("Public key for JWT must be included.")
+                ).expect("Public key for JWT must be included.")
             },
         }
     }
 
-    pub fn generate(&self, claims: TokenClaims) -> Result<String, ()> {
-        if
-            let Some(private_key) = &self.private_key &&
-            let Ok(token) = jsonwebtoken::jws::encode(
+    /// Will panic if the private key is damaged.
+    pub fn generate(&self, claims: TokenClaims) -> String {
+        let token = jsonwebtoken::jws
+            ::encode(
                 &Header::new(Algorithm::ES256),
                 Some(&claims),
-                private_key
+                self.private_key.as_ref().unwrap()
             )
-        {
-            return Ok(format!("{}.{}.{}", token.protected, token.payload, token.signature));
-        }
-        Err(())
+            .unwrap();
+
+        format!("{}.{}.{}", token.protected, token.payload, token.signature)
     }
 
-    pub fn verify(&self, token: String) -> Result<TokenClaims, ()> {
-        if let Some(public_key) = &self.public_key {
-            let data = jsonwebtoken::decode::<TokenClaims>(
-                token,
-                public_key,
-                &Validation::new(Algorithm::ES256)
-            );
+    /// Will panic if the public key is damaged.
+    pub fn verify(&self, token: String) -> Option<TokenClaims> {
+        let data = jsonwebtoken::decode::<TokenClaims>(
+            token,
+            &self.public_key,
+            &Validation::new(Algorithm::ES256)
+        );
 
-            match data {
-                Ok(data) => {
-                    return Ok(data.claims);
-                }
-                _ => {
-                    return Err(());
-                }
-            }
-        }
-        Err(())
+        return match data {
+            Ok(data) => { Some(data.claims) }
+            Err(_) => None,
+        };
     }
 }
 

@@ -27,21 +27,17 @@ pub async fn create(
 ) -> Result<AppendHeaders<Vec<(HeaderName, String)>>, SessionError> {
     let created_at = jsonwebtoken::get_current_timestamp() as i64;
 
-    let token = jwt
-        .generate(TokenClaims {
-            usage: TokenUsage::Authorize,
-            id: id.clone(),
-            exp: created_at + TOKEN_MAX_AGE,
-        })
-        .unwrap();
+    let token = jwt.generate(TokenClaims {
+        usage: TokenUsage::Authorize,
+        id: id.clone(),
+        exp: created_at + TOKEN_MAX_AGE,
+    });
 
-    let refresh = jwt
-        .generate(TokenClaims {
-            usage: TokenUsage::Refresh,
-            id: id.clone(),
-            exp: created_at + REFRESH_MAX_AGE,
-        })
-        .unwrap();
+    let refresh = jwt.generate(TokenClaims {
+        usage: TokenUsage::Refresh,
+        id: id.clone(),
+        exp: created_at + REFRESH_MAX_AGE,
+    });
 
     let token_cookie = construct_cookie("token", token, TOKEN_MAX_AGE);
     let refresh_cookie = construct_cookie("refresh", refresh, REFRESH_MAX_AGE);
@@ -75,7 +71,7 @@ pub async fn refresh(
     jwt: &Jwt,
     refresh: String
 ) -> Result<AppendHeaders<Vec<(HeaderName, String)>>, SessionError> {
-    if let Ok(refresh_claims) = jwt.verify(refresh) {
+    if let Some(refresh_claims) = jwt.verify(refresh) {
         if let TokenUsage::Refresh = refresh_claims.usage {
             return create(refresh_store, jwt, refresh_claims.id).await;
         }

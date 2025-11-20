@@ -56,14 +56,14 @@ async fn parse_cookies(jwt: &Jwt, cookies_str: &str) -> AuthorizationInfo {
         if let Ok(payload) = Cookie::parse(cookie) {
             if
                 payload.name() == "token" &&
-                let Ok(claims) = jwt.verify(payload.value().to_string()) &&
+                let Some(claims) = jwt.verify(payload.value().to_string()) &&
                 let TokenUsage::Authorize = claims.usage
             {
                 token = Some(claims);
             }
             if
                 payload.name() == "refresh" &&
-                let Ok(claims) = jwt.verify(payload.value().to_string()) &&
+                let Some(claims) = jwt.verify(payload.value().to_string()) &&
                 let TokenUsage::Refresh = claims.usage
             {
                 refresh = Some(claims);

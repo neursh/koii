@@ -59,6 +59,7 @@ async fn main() {
             })
         )
         .allow_credentials(true);
+
     let app = Router::new()
         .nest("/user", routes::user::routes(app_state.clone()))
         .route(
