@@ -14,8 +14,8 @@ use crate::{ AppState, utils::jwt::{ Jwt, TokenClaims, TokenUsage } };
 pub enum AuthorizationStatus {
     Authorized,
     Unauthorized,
-    /// Refresh failed also means the user is unauthorized.
-    RefreshFailed,
+    /// The user is unauthorized, but the refresh token is in good condition.
+    RefreshActive,
 }
 
 #[derive(Clone)]
@@ -71,10 +71,14 @@ async fn parse_cookies(jwt: &Jwt, cookies_str: &str) -> AuthorizationInfo {
         }
     }
 
-    let status = if token.is_some() && refresh.is_some() {
+    let status = if token.is_some() {
         AuthorizationStatus::Authorized
     } else {
-        AuthorizationStatus::Unauthorized
+        if refresh.is_some() {
+            AuthorizationStatus::RefreshActive
+        } else {
+            AuthorizationStatus::Unauthorized
+        }
     };
 
     AuthorizationInfo {
