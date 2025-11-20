@@ -17,13 +17,18 @@ pub async fn handler(
     State(state): State<UserRoutesState>
 ) -> ResponseModel {
     match authorization_info.status {
-        AuthorizationStatus::Authorized => {},
+        AuthorizationStatus::Authorized => {}
         _ => {
             return base::response::error(StatusCode::UNAUTHORIZED, "Get out.", None);
         }
     }
 
-    let refresh = authorization_info.refresh.unwrap();
+    let refresh = match authorization_info.refresh {
+        Some(refresh) => refresh,
+        None => {
+            return base::response::internal_error(None);
+        }
+    };
 
     // Invalidate the refresh token too.
     if

@@ -22,7 +22,12 @@ pub async fn handler(
         }
     }
 
-    let token = authorization_info.token.unwrap();
+    let token = match authorization_info.token {
+        Some(token) => token,
+        None => {
+            return base::response::internal_error(None);
+        }
+    };
 
     match state.app.database.users.delete(token.id).await {
         Ok(true) => {
