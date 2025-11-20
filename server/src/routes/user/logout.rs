@@ -17,7 +17,7 @@ pub async fn handler(
     State(state): State<UserRoutesState>
 ) -> ResponseModel {
     match authorization_info.status {
-        AuthorizationStatus::Authorized => (),
+        AuthorizationStatus::Authorized => {},
         _ => {
             return base::response::error(StatusCode::UNAUTHORIZED, "Get out.", None);
         }

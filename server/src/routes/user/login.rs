@@ -34,12 +34,11 @@ pub async fn handler(
             credentials(&payload_task.email, &payload_task.password)
         ).await
     {
-        Ok(result) => {
-            if let Err(bad) = result {
-                return bad;
-            }
+        Ok(Ok(_)) => {} // valid, move on
+        Ok(Err(error)) => {
+            return error;
         }
-        _ => {
+        Err(_) => {
             return base::response::internal_error(None);
         }
     }
@@ -50,17 +49,9 @@ pub async fn handler(
         }
     ).await;
     let user = match edge_user {
-        Ok(user) => {
-            match user {
-                Some(user) => user,
-                None => {
-                    return base::response::error(
-                        StatusCode::FORBIDDEN,
-                        "Wrong email or password.",
-                        None
-                    );
-                }
-            }
+        Ok(Some(user)) => user,
+        Ok(None) => {
+            return base::response::error(StatusCode::FORBIDDEN, "Wrong email or password.", None);
         }
         Err(error) => {
             eprintln!("Database error: {:?}", error.kind);
@@ -68,26 +59,28 @@ pub async fn handler(
         }
     };
 
-    let result = match
+    match
         state.app.services.verify_pass.send(VerifyPassRequest {
             password: payload.password,
             hash: user.password_hash,
         }).await
     {
-        Ok(Some(result)) => result,
+        Ok(Some(true)) => {
+            match base::session::create(&state.app.database.refresh, &state.app.jwt, user.id).await {
+                Ok(headers) => {
+                    return base::response::success(StatusCode::OK, Some(headers));
+                }
+                Err(_) => {
+                    return base::response::internal_error(None);
+                }
+            };
+        }
+        Ok(Some(false)) => {
+            return base::response::error(StatusCode::FORBIDDEN, "Wrong email or password.", None);
+        }
+        // Err & Ok(None)
         _ => {
             return base::response::internal_error(None);
         }
     };
-
-    if result {
-        return match
-            base::session::create(&state.app.database.refresh, &state.app.jwt, user.id).await
-        {
-            Ok(headers) => base::response::success(StatusCode::OK, Some(headers)),
-            Err(_) => base::response::internal_error(None),
-        };
-    }
-
-    base::response::error(StatusCode::FORBIDDEN, "Wrong email or password.", None)
 }

@@ -1,7 +1,7 @@
 use axum::{
     Extension,
     extract::State,
-    http::{ StatusCode, header::SET_COOKIE },
+    http::{ HeaderName, StatusCode, header::SET_COOKIE },
     response::AppendHeaders,
 };
 
@@ -24,50 +24,35 @@ pub async fn handler(
 
     let token = authorization_info.token.unwrap();
 
-    let result = match state.app.database.users.delete(token.id).await {
-        Ok(result) => result,
+    match state.app.database.users.delete(token.id).await {
+        Ok(true) => {
+            return base::response::success(StatusCode::OK, Some(clear_tokens_header()));
+        }
+        Ok(false) => {
+            return base::response::error(
+                StatusCode::CONFLICT,
+                "The user is already deleted. Why is the cookie still here?",
+                Some(clear_tokens_header())
+            );
+        }
         Err(error) => {
             eprintln!("{}", error);
             return base::response::internal_error(None);
         }
     };
+}
 
-    if result {
-        return base::response::success(
-            StatusCode::OK,
-            Some(
-                AppendHeaders(
-                    vec![
-                        (
-                            SET_COOKIE,
-                            "token=; HttpOnly; SameSite=Lax; Secure; Path=/; Domain=.koii.space; Max-Age=0".to_string(),
-                        ),
-                        (
-                            SET_COOKIE,
-                            "refresh=; HttpOnly; SameSite=Lax; Secure; Path=/; Domain=.koii.space; Max-Age=0".to_string(),
-                        )
-                    ]
-                )
+fn clear_tokens_header() -> AppendHeaders<Vec<(HeaderName, String)>> {
+    AppendHeaders(
+        vec![
+            (
+                SET_COOKIE,
+                "token=; HttpOnly; SameSite=Lax; Secure; Path=/; Domain=.koii.space; Max-Age=0".to_string(),
+            ),
+            (
+                SET_COOKIE,
+                "refresh=; HttpOnly; SameSite=Lax; Secure; Path=/; Domain=.koii.space; Max-Age=0".to_string(),
             )
-        );
-    }
-
-    base::response::error(
-        StatusCode::CONFLICT,
-        "The user is already deleted. Why is the cookie still here?",
-        Some(
-            AppendHeaders(
-                vec![
-                    (
-                        SET_COOKIE,
-                        "token=; HttpOnly; SameSite=Lax; Secure; Path=/; Domain=.koii.space; Max-Age=0".to_string(),
-                    ),
-                    (
-                        SET_COOKIE,
-                        "refresh=; HttpOnly; SameSite=Lax; Secure; Path=/; Domain=.koii.space; Max-Age=0".to_string(),
-                    )
-                ]
-            )
-        )
+        ]
     )
 }

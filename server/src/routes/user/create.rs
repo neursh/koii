@@ -42,25 +42,23 @@ pub async fn handler(
             credentials(&payload_task.email, &payload_task.password)
         ).await
     {
-        Ok(result) => {
-            if let Err(bad) = result {
-                return bad;
-            }
+        Ok(Ok(_)) => {} // valid, move on
+        Ok(Err(error)) => {
+            return error;
         }
-        _ => {
+        Err(_) => {
             return base::response::internal_error(None);
         }
     }
 
     match state.app.database.users.get_one(doc! { "email": &payload.email }).await {
-        Ok(user) => {
-            if user.is_some() {
-                return base::response::error(
-                    StatusCode::CONFLICT,
-                    "An account with the same email already exists.",
-                    None
-                );
-            }
+        Ok(None) => {} // valid, move on
+        Ok(Some(_)) => {
+            return base::response::error(
+                StatusCode::CONFLICT,
+                "An account with the same email already exists.",
+                None
+            );
         }
         Err(error) => {
             return parse_db_fail(error);
@@ -69,6 +67,7 @@ pub async fn handler(
 
     let password_hash = match state.app.services.hash_pass.send(payload.password).await {
         Ok(Some(hash)) => hash,
+        // Err & Ok(None)
         _ => {
             return base::response::internal_error(None);
         }

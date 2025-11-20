@@ -26,22 +26,18 @@ pub async fn handler(
     }
 
     return match state.app.database.users.verify(payload.verify_code).await {
-        Ok(done) => {
-            match done {
-                Some(id) =>
-                    match
-                        base::session::create(&state.app.database.refresh, &state.app.jwt, id).await
-                    {
-                        Ok(headers) => base::response::success(StatusCode::OK, Some(headers)),
-                        Err(_) => base::response::internal_error(None),
-                    }
-                None =>
-                    base::response::error(
-                        StatusCode::NOT_FOUND,
-                        "There's no account associated to this verify token.",
-                        None
-                    ),
+        Ok(Some(id)) => {
+            match base::session::create(&state.app.database.refresh, &state.app.jwt, id).await {
+                Ok(headers) => base::response::success(StatusCode::OK, Some(headers)),
+                Err(_) => base::response::internal_error(None),
             }
+        }
+        Ok(None) => {
+            base::response::error(
+                StatusCode::NOT_FOUND,
+                "There's no account associated to this verify token.",
+                None
+            )
         }
         Err(error) => {
             println!("{:?}", error);
