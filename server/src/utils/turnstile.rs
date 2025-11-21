@@ -7,6 +7,7 @@ pub struct TurnstileResult {
     pub success: bool,
     pub challenge_ts: String,
     pub hostname: String,
+    #[serde(rename = "error-codes")]
     pub error_codes: Vec<String>,
     pub action: String,
     pub cdata: String,
