@@ -71,7 +71,7 @@ async fn parse_cookies(jwt: &Jwt, cookies_str: &str) -> AuthorizationInfo {
         }
     }
 
-    let status = if token.is_some() {
+    let status = if compare(&token, &refresh) {
         AuthorizationStatus::Authorized
     } else {
         if refresh.is_some() {
@@ -85,5 +85,13 @@ async fn parse_cookies(jwt: &Jwt, cookies_str: &str) -> AuthorizationInfo {
         token,
         refresh,
         status,
+    }
+}
+
+fn compare(token: &Option<TokenClaims>, refresh: &Option<TokenClaims>) -> bool {
+    if let Some(token) = token && let Some(refresh) = refresh {
+        token.exp == refresh.exp && token.id == refresh.id
+    } else {
+        false
     }
 }
