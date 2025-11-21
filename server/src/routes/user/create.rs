@@ -15,6 +15,7 @@ use nanoid::nanoid;
 pub struct CreatePayload {
     pub email: String,
     pub password: String,
+    pub clientstile: String,
 }
 
 pub async fn handler(
@@ -51,6 +52,22 @@ pub async fn handler(
         }
     }
 
+    // Check turnstile token.
+    match state.app.turnstile.verify(payload.clientstile).await {
+        Ok(true) => {} // valid, move on
+        Ok(false) => {
+            return base::response::error(
+                StatusCode::BAD_REQUEST,
+                "Invalid turnstile token. Please try reload the page and verify again.",
+                None
+            );
+        }
+        Err(_) => {
+            return base::response::internal_error(None);
+        }
+    }
+
+    // Check if the email is already used.
     match state.app.database.users.get_one(doc! { "email": &payload.email }).await {
         Ok(None) => {} // valid, move on
         Ok(Some(_)) => {

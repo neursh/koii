@@ -6,7 +6,7 @@ use tower_http::cors::CorsLayer;
 use crate::{
     database::KoiiDatabase,
     services::{ Services, WorkerSpec, WorkersAllocate },
-    utils::{ jwt::Jwt, cookie_query },
+    utils::{ cookie_query, jwt::Jwt, turnstile::Turnstile },
 };
 
 pub mod database;
@@ -19,6 +19,7 @@ pub struct AppState {
     pub services: Services,
     pub database: KoiiDatabase,
     pub jwt: Jwt,
+    pub turnstile: Turnstile,
 }
 
 #[tokio::main]
@@ -48,6 +49,7 @@ async fn main() {
         }),
         database: database::initialize().await.unwrap(),
         jwt: utils::jwt::Jwt::new(),
+        turnstile: Turnstile::default(),
     });
 
     let cors = CorsLayer::new()
