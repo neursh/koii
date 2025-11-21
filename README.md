@@ -30,3 +30,4 @@ For authenticated users, there will be rate limits too, though it won't have muc
 - [x] Basic user operations. (create, verify, login, refresh, logout, delete)
 - [ ] Advanced user operations. (edit password, edit info, 2FA)
 - [ ] OAuth2.
+- [ ] Account recovery.
