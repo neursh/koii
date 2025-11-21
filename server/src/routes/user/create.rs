@@ -7,7 +7,7 @@ use crate::{
     database::users::UserDocument,
     routes::user::UserRoutesState,
     services::verify_email::VerifyEmailRequest,
-    utils::{ checks::credentials, cookie_query::{ AuthorizationInfo, AuthorizationStatus } },
+    utils::{ checks, cookie_query::{ AuthorizationInfo, AuthorizationStatus } },
 };
 use nanoid::nanoid;
 
@@ -37,18 +37,10 @@ pub async fn handler(
     }
 
     // Perform checks before processing.
-    let payload_task = payload.clone();
-    match
-        tokio::task::spawn_blocking(move ||
-            credentials(&payload_task.email, &payload_task.password)
-        ).await
-    {
-        Ok(Ok(_)) => {} // valid, move on
-        Ok(Err(error)) => {
+    match checks::credentials(&payload.email, &payload.password) {
+        Ok(_) => {} // valid, move on
+        Err(error) => {
             return error;
-        }
-        Err(_) => {
-            return base::response::internal_error(None);
         }
     }
 

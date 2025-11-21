@@ -6,7 +6,7 @@ use crate::{
     base::{ self, response::ResponseModel },
     routes::user::UserRoutesState,
     services::verify_pass::VerifyPassRequest,
-    utils::{ checks::credentials, cookie_query::{ AuthorizationInfo, AuthorizationStatus } },
+    utils::{ checks, cookie_query::{ AuthorizationInfo, AuthorizationStatus } },
 };
 
 #[derive(Deserialize, Clone)]
@@ -28,18 +28,10 @@ pub async fn handler(
         );
     }
 
-    let payload_task = payload.clone();
-    match
-        tokio::task::spawn_blocking(move ||
-            credentials(&payload_task.email, &payload_task.password)
-        ).await
-    {
-        Ok(Ok(_)) => {} // valid, move on
-        Ok(Err(error)) => {
+    match checks::credentials(&payload.email, &payload.password) {
+        Ok(_) => {} // valid, move on
+        Err(error) => {
             return error;
-        }
-        Err(_) => {
-            return base::response::internal_error(None);
         }
     }
 

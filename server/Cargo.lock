@@ -1521,8 +1521,8 @@ dependencies = [
  "cookie-rs",
  "dashmap",
  "dotenv",
+ "fast_chemail",
  "jsonwebtoken",
- "mailchecker",
  "mongodb",
  "nanoid",
  "reqwest",
@@ -1653,16 +1653,6 @@ dependencies = [
  "macro_magic_core",
  "quote",
  "syn",
-]
-
-[[package]]
-name = "mailchecker"
-version = "6.0.19"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "abad4bc63045f04cfc55aa4c55d4ec0a890c377ce56463bfc2adc2bc059c4b84"
-dependencies = [
- "fast_chemail",
- "once_cell",
 ]
 
 [[package]]
