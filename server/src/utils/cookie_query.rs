@@ -8,7 +8,11 @@ use axum::{
 };
 use cookie_rs::Cookie;
 
-use crate::{ AppState, utils::jwt::{ Jwt, TokenClaims, TokenUsage } };
+use crate::{
+    AppState,
+    base::session::{ REFRESH_MAX_AGE, TOKEN_MAX_AGE },
+    utils::jwt::{ Jwt, TokenClaims, TokenUsage },
+};
 
 #[derive(Clone)]
 pub enum AuthorizationStatus {
@@ -92,7 +96,7 @@ async fn parse_cookies(jwt: &Jwt, cookies_str: &str) -> AuthorizationInfo {
 
 fn compare(token: &Option<TokenClaims>, refresh: &Option<TokenClaims>) -> bool {
     if let Some(token) = token && let Some(refresh) = refresh {
-        token.exp == refresh.exp && token.id == refresh.id
+        token.exp - TOKEN_MAX_AGE == refresh.exp - REFRESH_MAX_AGE && token.id == refresh.id
     } else {
         false
     }
