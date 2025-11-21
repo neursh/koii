@@ -1,6 +1,12 @@
 use std::{ env::args, sync::Arc };
 
-use axum::{ Router, extract::DefaultBodyLimit, http::HeaderValue, routing::get };
+use axum::{
+    Router,
+    extract::DefaultBodyLimit,
+    http::HeaderValue,
+    routing::get,
+    http::{ Method, header::{ AUTHORIZATION, CONTENT_TYPE } },
+};
 use axum_server::tls_rustls::RustlsConfig;
 use tower_http::cors::CorsLayer;
 use crate::{
@@ -60,6 +66,8 @@ async fn main() {
                     (origin.starts_with(b"https://") && origin.ends_with(b".koii.space"))
             })
         )
+        .allow_methods(vec![Method::GET, Method::POST, Method::PUT, Method::PATCH, Method::DELETE])
+        .allow_headers([AUTHORIZATION, CONTENT_TYPE])
         .allow_credentials(true);
 
     let app = Router::new()
