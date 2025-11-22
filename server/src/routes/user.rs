@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use axum::{ Router, routing::{ get, patch, post } };
+use axum::{ Router, routing::{ patch, post } };
 use tokio::sync::Semaphore;
 
 use crate::AppState;
@@ -32,7 +32,7 @@ pub fn routes(app_state: Arc<AppState>) -> Router {
         .route("/", post(create::handler).delete(delete::handler))
         .route("/verify", patch(verify::handler))
         .route("/login", post(login::handler))
-        .route("/logout", get(logout::handler))
-        .route("/refresh", get(refresh::handler))
+        .route("/logout", patch(logout::handler))
+        .route("/refresh", patch(refresh::handler))
         .with_state(state)
 }
