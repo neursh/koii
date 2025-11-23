@@ -9,9 +9,9 @@ import {
 import { URLPattern } from 'urlpattern-polyfill/urlpattern';
 
 export class Router {
-  destinations: [URLPattern, ReactNode][];
+  destinations: [URLPattern, { title: string; element: ReactNode }][];
 
-  constructor(load: { [key: string]: ReactNode }) {
+  constructor(load: { [key: string]: { title: string; element: ReactNode } }) {
     this.destinations = Object.entries(load).map((destination) => [
       new URLPattern(destination[0], window.location.origin),
       destination[1],
@@ -25,7 +25,11 @@ export class Router {
 
     if (!destination) return undefined;
 
-    return <Fragment key={`router-${location}`}>{destination[1]}</Fragment>;
+    document.title = destination[1].title;
+
+    return (
+      <Fragment key={`router-${location}`}>{destination[1].element}</Fragment>
+    );
   }
 }
 

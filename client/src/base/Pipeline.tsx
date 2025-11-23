@@ -7,7 +7,6 @@ import { lenisInstance } from '../utils/lenisInstance';
 export default function Pipeline(props: {
   children?: ReactNode;
   contentReady?: State<boolean>;
-  title: string;
   name: string;
   parentPath: string;
   loadingPadding?: number;
@@ -17,7 +16,6 @@ export default function Pipeline(props: {
     <>
       <RouteHandler
         contentReady={props.contentReady}
-        title={props.title}
         name={props.name}
         parentPath={props.parentPath}
         loadingPadding={props.loadingPadding}
@@ -30,7 +28,6 @@ export default function Pipeline(props: {
 
 function RouteHandler(props: {
   contentReady?: State<boolean>;
-  title: string;
   name: string;
   parentPath: string;
   loadingPadding?: number;
@@ -45,10 +42,6 @@ function RouteHandler(props: {
    * It will be disposed when the page quits.
    */
   const landingHandler = useCallback(() => {
-    if (document.title !== props.title) {
-      document.title = props.title;
-    }
-
     if (!pageRendered.value) {
       if (props.autoStartLenis === undefined || props.autoStartLenis) {
         lenisInstance.start();
@@ -65,7 +58,6 @@ function RouteHandler(props: {
     props.autoStartLenis,
     props.name,
     props.parentPath,
-    props.title,
   ]);
 
   useLayoutEffect(() => {

@@ -36,8 +36,8 @@ export default function Layout(props: { children?: ReactNode }) {
                 height: 'calc(100dvh - 60px)',
                 translateX: '12px',
                 translateY: '48px',
+                fill: 'white',
               }}
-              fill="white"
             />
           </mask>
         </defs>

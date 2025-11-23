@@ -18,34 +18,40 @@ window.scrollTo({ top: 0 });
 activateLenis();
 
 const destinations = new Router({
-  '/': (
-    <Pipeline title="Koii" name="Landing" parentPath="/">
-      <div className="w-full h-dvh bg-[white]/80"></div>
-    </Pipeline>
-  ),
-  '/account': (
-    <Pipeline title="Koii - Account" name="Apps" parentPath="/">
-      <p>Welcome to account</p>
-    </Pipeline>
-  ),
-  '/apps': (
-    <Pipeline title="Koii - Apps" name="Apps" parentPath="/">
-      <p>Welcome to apps</p>
-    </Pipeline>
-  ),
+  '/': {
+    title: 'Koii',
+    element: (
+      <Pipeline name="Landing" parentPath="/">
+        <div className="w-full h-dvh bg-[white]/80 pt-12">
+          <p>Hello there</p>
+        </div>
+      </Pipeline>
+    ),
+  },
+  '/account': {
+    title: 'Koii - Account',
+    element: (
+      <Pipeline name="Aaccount" parentPath="/account">
+        <p className="pt-12">Welcome to account</p>
+      </Pipeline>
+    ),
+  },
+  '/apps': {
+    title: 'Koii - Apps',
+    element: (
+      <Pipeline name="Apps" parentPath="/apps">
+        <p className="pt-12">Welcome to apps</p>
+      </Pipeline>
+    ),
+  },
 });
 
-export function RouteProc() {
-  const route = useRoute(500);
-  return destinations.match(route.href);
-}
-
 export function Container() {
+  const route = useRoute(500);
+
   return (
     <main>
-      <Layout>
-        <RouteProc />
-      </Layout>
+      <Layout>{destinations.match(route.href)}</Layout>
     </main>
   );
 }
