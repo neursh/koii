@@ -1,9 +1,10 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Router, useRoute } from './hooks/router.tsx';
+import Pipeline from './base/Pipeline';
+import { Router, useRoute } from './hooks/router';
 import './index.css';
-import Layout from './Layout/index.tsx';
-import { activateLenis } from './utils/lenisInstance.ts';
+import Layout from './Layout';
+import { activateLenis } from './utils/lenisInstance';
 
 /**
  * Avoid the save scroll progress feature to break the flow of the sites.
@@ -17,16 +18,34 @@ window.scrollTo({ top: 0 });
 activateLenis();
 
 const destinations = new Router({
-  '/': <div className="w-full h-dvh bg-[white]/80"></div>,
-  '/apps': <p>Welcome to apps</p>,
+  '/': (
+    <Pipeline title="Koii" name="Landing" parentPath="/">
+      <div className="w-full h-dvh bg-[white]/80"></div>
+    </Pipeline>
+  ),
+  '/account': (
+    <Pipeline title="Koii - Account" name="Apps" parentPath="/">
+      <p>Welcome to account</p>
+    </Pipeline>
+  ),
+  '/apps': (
+    <Pipeline title="Koii - Apps" name="Apps" parentPath="/">
+      <p>Welcome to apps</p>
+    </Pipeline>
+  ),
 });
 
-export function Container() {
+export function RouteProc() {
   const route = useRoute(500);
+  return destinations.match(route.href);
+}
 
+export function Container() {
   return (
     <main>
-      <Layout>{destinations.match(route.href)}</Layout>
+      <Layout>
+        <RouteProc />
+      </Layout>
     </main>
   );
 }

@@ -1,5 +1,11 @@
 import { hookstate, useHookstate } from 'hookstate';
-import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import {
+  Fragment,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { URLPattern } from 'urlpattern-polyfill/urlpattern';
 
 export class Router {
@@ -16,7 +22,10 @@ export class Router {
     const destination = this.destinations.find((destination) =>
       destination[0].test(location)
     );
-    return destination ? destination[1] : undefined;
+
+    if (!destination) return undefined;
+
+    return <Fragment key={`router-${location}`}>{destination[1]}</Fragment>;
   }
 }
 
@@ -27,7 +36,7 @@ window.addEventListener('popstate', () => {
 });
 
 /// Notify route changes, with optionally wait a bit before fire.
-export function useRoute(delay?: number) {
+export function useRoute(delay?: number): URL {
   const currentHref = useHookstate(currentHrefGlobal);
   const [route, setRoute] = useState(new URL(currentHrefGlobal.value));
   const timeoutHolder = useRef(setTimeout(() => {}));
@@ -35,18 +44,24 @@ export function useRoute(delay?: number) {
   useLayoutEffect(() => {
     clearTimeout(timeoutHolder.current);
     timeoutHolder.current = setTimeout(() => {
-      setRoute(new URL(currentHref.value));
+      if (route.href !== currentHref.value) {
+        setRoute(new URL(currentHref.value));
+      }
     }, delay);
 
     return () => {
       clearTimeout(timeoutHolder.current);
     };
-  }, [currentHref, delay]);
+  }, [currentHref, delay, route.href]);
 
   return route;
 }
 
 export function navigate(to: string) {
+  if (to === window.location.href.substring(window.location.origin.length)) {
+    return;
+  }
+
   history.pushState(undefined, '', to);
   currentHrefGlobal.set(window.location.href);
 }
