@@ -2716,6 +2716,7 @@ __metadata:
     eslint-plugin-react-refresh: "npm:^0.4.24"
     globals: "npm:^16.5.0"
     hookstate: "https://github.com/vertiscape/hookstate#3fa112100740e0b91a12b35d48c9f5940aa9f980"
+    lenis: "git+https://github.com/vertiscape/stellar.git#6ae088d5d54ce5f9d12b8fdc7bd308b241b12143"
     motion: "npm:^12.23.24"
     react: "npm:^19.2.0"
     react-dom: "npm:^19.2.0"
@@ -2727,6 +2728,24 @@ __metadata:
     wrangler: "npm:^4.49.1"
   languageName: unknown
   linkType: soft
+
+"lenis@git+https://github.com/vertiscape/stellar.git#6ae088d5d54ce5f9d12b8fdc7bd308b241b12143":
+  version: 1.2.3
+  resolution: "lenis@https://github.com/vertiscape/stellar.git#commit=6ae088d5d54ce5f9d12b8fdc7bd308b241b12143"
+  peerDependencies:
+    "@nuxt/kit": ">=3.0.0"
+    react: ">=17.0.0"
+    vue: ">=3.0.0"
+  peerDependenciesMeta:
+    "@nuxt/kit":
+      optional: true
+    react:
+      optional: true
+    vue:
+      optional: true
+  checksum: 10c0/ed32808f89d845a6e0c328b4259b3b8dec57c5d60b395fc474de600c82de9203e0b5f0a67824bd4d74a055a450725f584a85c1bc58b084669291bbdf943939fd
+  languageName: node
+  linkType: hard
 
 "levn@npm:^0.4.1":
   version: 0.4.1

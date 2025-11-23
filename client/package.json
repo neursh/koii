@@ -13,6 +13,7 @@
     "@marsidev/react-turnstile": "^1.3.1",
     "@tailwindcss/vite": "^4.1.17",
     "hookstate": "https://github.com/vertiscape/hookstate#3fa112100740e0b91a12b35d48c9f5940aa9f980",
+    "lenis": "git+https://github.com/vertiscape/stellar.git#6ae088d5d54ce5f9d12b8fdc7bd308b241b12143",
     "motion": "^12.23.24",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
