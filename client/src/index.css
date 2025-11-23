@@ -1,1 +1,11 @@
 @import 'tailwindcss';
+
+@font-face {
+  font-family: Stardom;
+  font-style: normal;
+  src: url('/fonts/Stardom/Regular.woff2') format('woff2');
+}
+
+@theme {
+  --font-display: 'Stardom';
+}

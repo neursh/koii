@@ -1,11 +1,11 @@
 import { hookstate, useHookstate } from 'hookstate';
-import { useLayoutEffect, useRef, useState, type ReactElement } from 'react';
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { URLPattern } from 'urlpattern-polyfill/urlpattern';
 
 export class Router {
-  destinations: [URLPattern, ReactElement][];
+  destinations: [URLPattern, ReactNode][];
 
-  constructor(load: { [key: string]: ReactElement }) {
+  constructor(load: { [key: string]: ReactNode }) {
     this.destinations = Object.entries(load).map((destination) => [
       new URLPattern(destination[0], window.location.origin),
       destination[1],
@@ -16,7 +16,7 @@ export class Router {
     const destination = this.destinations.find((destination) =>
       destination[0].test(location)
     );
-    return destination ? destination[1] : null;
+    return destination ? destination[1] : undefined;
   }
 }
 
