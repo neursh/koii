@@ -45,14 +45,16 @@ function RouteHandler(props: {
    * It will be disposed when the page quits.
    */
   const landingHandler = useCallback(() => {
+    if (document.title !== props.title) {
+      document.title = props.title;
+    }
+
     if (!pageRendered.value) {
       if (props.autoStartLenis === undefined || props.autoStartLenis) {
         lenisInstance.start();
       }
 
-      document.title = props.title;
       pageRendered.set(true);
-
       currentParent.set(props.parentPath);
 
       console.log(`[${props.name}] Renderer status: Mounted`);
