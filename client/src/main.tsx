@@ -1,7 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import Pipeline from './base/Pipeline';
-import { Router, useRoute } from './hooks/router';
 import './index.css';
 import Layout from './Layout';
 import { activateLenis } from './utils/lenisInstance';
@@ -17,47 +17,43 @@ window.scrollTo({ top: 0 });
  */
 activateLenis();
 
-const destinations = new Router({
-  '/': {
-    title: 'Koii',
-    element: (
-      <Pipeline name="Landing" parentPath="/">
-        <div className="w-full h-dvh bg-[white]/80 pt-12">
-          <p>Hello there</p>
-        </div>
-      </Pipeline>
-    ),
+const router = createBrowserRouter([
+  {
+    path: '/',
+    element: <Layout />,
+    children: [
+      {
+        index: true,
+        element: (
+          <Pipeline
+            title="Koii"
+            debugName="Landing"
+            parentPath="/"
+            key="anding"
+          >
+            <p>Hello</p>
+          </Pipeline>
+        ),
+      },
+      {
+        path: '/account',
+        element: (
+          <Pipeline
+            title="Koii - Account"
+            debugName="Account"
+            parentPath="/account"
+            key="acc"
+          >
+            <p>Hello 2</p>
+          </Pipeline>
+        ),
+      },
+    ],
   },
-  '/account': {
-    title: 'Koii - Account',
-    element: (
-      <Pipeline name="Aaccount" parentPath="/account">
-        <p className="pt-12">Welcome to account</p>
-      </Pipeline>
-    ),
-  },
-  '/apps': {
-    title: 'Koii - Apps',
-    element: (
-      <Pipeline name="Apps" parentPath="/apps">
-        <p className="pt-12">Welcome to apps</p>
-      </Pipeline>
-    ),
-  },
-});
-
-export function Container() {
-  const route = useRoute(500);
-
-  return (
-    <main>
-      <Layout>{destinations.match(route.href)}</Layout>
-    </main>
-  );
-}
+]);
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <Container />
+    <RouterProvider router={router} />
   </StrictMode>
 );

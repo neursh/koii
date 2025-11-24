@@ -7,7 +7,8 @@ import { lenisInstance } from '../utils/lenisInstance';
 export default function Pipeline(props: {
   children?: ReactNode;
   contentReady?: State<boolean>;
-  name: string;
+  title: string;
+  debugName: string;
   parentPath: string;
   loadingPadding?: number;
   autoStartLenis?: boolean;
@@ -16,7 +17,8 @@ export default function Pipeline(props: {
     <>
       <RouteHandler
         contentReady={props.contentReady}
-        name={props.name}
+        title={props.title}
+        debugName={props.debugName}
         parentPath={props.parentPath}
         loadingPadding={props.loadingPadding}
         autoStartLenis={props.autoStartLenis}
@@ -28,37 +30,34 @@ export default function Pipeline(props: {
 
 function RouteHandler(props: {
   contentReady?: State<boolean>;
-  name: string;
+  title: string;
+  debugName: string;
   parentPath: string;
   loadingPadding?: number;
   autoStartLenis?: boolean;
 }) {
   const landingTask = useRef(setInterval(() => {}));
   const pageRendered = useHookstate(GlobalContext.pageRendered);
-  const currentParent = useHookstate(GlobalContext.currentParent);
 
   /**
    * A handler running in an interval, checking for errors, misconfigured context.
    * It will be disposed when the page quits.
    */
   const landingHandler = useCallback(() => {
-    if (!pageRendered.value) {
+    if (
+      !pageRendered.value ||
+      GlobalContext.currentParent.value !== props.parentPath
+    ) {
       if (props.autoStartLenis === undefined || props.autoStartLenis) {
         lenisInstance.start();
       }
 
       pageRendered.set(true);
-      currentParent.set(props.parentPath);
+      GlobalContext.currentParent.set(props.parentPath);
 
-      console.log(`[${props.name}] Renderer status: Mounted`);
+      console.log(`[${props.debugName}] Renderer status: Mounted`);
     }
-  }, [
-    currentParent,
-    pageRendered,
-    props.autoStartLenis,
-    props.name,
-    props.parentPath,
-  ]);
+  }, [pageRendered, props.autoStartLenis, props.debugName, props.parentPath]);
 
   useLayoutEffect(() => {
     /**
@@ -66,8 +65,10 @@ function RouteHandler(props: {
      */
     clearInterval(landingTask.current);
 
+    document.title = props.title;
+
     if (props.contentReady && !props.contentReady.value) {
-      console.log(`[${props.name}] Renderer status: Loading scene`);
+      console.log(`[${props.debugName}] Renderer status: Loading scene`);
       return;
     }
 
@@ -75,7 +76,13 @@ function RouteHandler(props: {
       landingHandler,
       (props.loadingPadding ?? 0) * 1000 + 500
     );
-  }, [landingHandler, props.contentReady, props.loadingPadding, props.name]);
+  }, [
+    landingHandler,
+    props.contentReady,
+    props.loadingPadding,
+    props.debugName,
+    props.title,
+  ]);
 
   useLayoutEffectOnce(() => () => {
     /**
@@ -92,7 +99,7 @@ function RouteHandler(props: {
     lenisInstance.stop();
     lenisInstance.scrollTo(0, { immediate: true, force: true });
 
-    console.log(`[${props.name}] Renderer status: Unmounted`);
+    console.log(`[${props.debugName}] Renderer status: Unmounted`);
   });
 
   return null;

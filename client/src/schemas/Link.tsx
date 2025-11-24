@@ -1,14 +1,16 @@
 import { motion } from 'motion/react';
 import type { ReactNode } from 'react';
-import { navigate } from '../hooks/router';
+import { useNavigate } from 'react-router-dom';
 
-export default function Link(props: { href: string; children: ReactNode }) {
+export default function Link(props: { to: string; children: ReactNode }) {
+  const navigator = useNavigate();
+
   return (
     <motion.a
-      href={props.href}
+      href={props.to}
       onClick={(event) => {
         event.preventDefault();
-        navigate(props.href);
+        navigator(props.to);
       }}
     >
       {props.children}

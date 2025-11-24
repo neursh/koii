@@ -9,3 +9,9 @@
 @theme {
   --font-display: 'Stardom';
 }
+
+html,
+body {
+  background-color: black;
+  color: rgba(255, 255, 255, 0.85);
+}
