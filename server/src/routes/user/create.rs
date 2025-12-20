@@ -1,20 +1,24 @@
 use serde::Deserialize;
 use axum::{ Extension, Json, extract::State, http::StatusCode };
 use mongodb::bson::{ self, doc };
+use validator::Validate;
 
 use crate::{
     base::{ self, response::ResponseModel },
     database::users::UserDocument,
     routes::user::UserRoutesState,
-    services::verify_email::VerifyEmailRequest,
-    utils::{ checks, cookie_query::{ AuthorizationInfo, AuthorizationStatus } },
+    worker::verify_email::VerifyEmailRequest,
+    utils::{ cookie_query::{ AuthorizationInfo, AuthorizationStatus } },
 };
 use nanoid::nanoid;
 
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Validate, Clone)]
 pub struct CreatePayload {
+    #[validate(email)]
     pub email: String,
+    #[validate(length(min = 12))]
     pub password: String,
+    #[validate(length(max = 2048))]
     pub clientstile: String,
 }
 
@@ -36,11 +40,30 @@ pub async fn handler(
         return base::response::internal_error(None);
     }
 
-    // Perform checks before processing.
-    match checks::credentials(&payload.email, &payload.password) {
+    // Validate before processing.
+    match payload.validate() {
         Ok(_) => {} // valid, move on
         Err(error) => {
-            return error;
+            let (bad_field, _) = error.errors().iter().next().unwrap();
+            if bad_field == "email" {
+                return base::response::error(StatusCode::BAD_REQUEST, "Invalid email.", None);
+            }
+            if bad_field == "password" {
+                return base::response::error(
+                    StatusCode::BAD_REQUEST,
+                    "Password must be longer than 12 characters.",
+                    None
+                );
+            }
+            if bad_field == "clientstile" {
+                return base::response::error(
+                    StatusCode::BAD_REQUEST,
+                    "Invalid turnstile token length u cheeky lad UvU",
+                    None
+                );
+            }
+
+            return base::response::internal_error(None);
         }
     }
 
@@ -50,7 +73,7 @@ pub async fn handler(
         Ok(false) => {
             return base::response::error(
                 StatusCode::BAD_REQUEST,
-                "Invalid turnstile token. Please try reload the page and verify again.",
+                "Invalid turnstile token length u cheeky lad UvU",
                 None
             );
         }
@@ -74,7 +97,7 @@ pub async fn handler(
         }
     }
 
-    let password_hash = match state.app.services.hash_pass.send(payload.password).await {
+    let password_hash = match state.app.worker.hash_pass.send(payload.password).await {
         Ok(Some(hash)) => hash,
         // Err & Ok(None)
         _ => {
@@ -85,7 +108,7 @@ pub async fn handler(
     let verify_code = nanoid!(64);
 
     if
-        state.app.services.verify_email
+        state.app.worker.verify_email
             .send_ignore_result(VerifyEmailRequest {
                 email: payload.email.clone(),
                 verify_code: verify_code.clone(),

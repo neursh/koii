@@ -1,17 +1,20 @@
 use axum::{ Extension, Json, extract::State, http::StatusCode };
 use mongodb::bson;
 use serde::Deserialize;
+use validator::Validate;
 
 use crate::{
     base::{ self, response::ResponseModel },
     routes::user::UserRoutesState,
-    services::verify_pass::VerifyPassRequest,
-    utils::{ checks, cookie_query::{ AuthorizationInfo, AuthorizationStatus } },
+    worker::verify_pass::VerifyPassRequest,
+    utils::{ cookie_query::{ AuthorizationInfo, AuthorizationStatus } },
 };
 
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Validate, Clone)]
 pub struct LoginPayload {
+    #[validate(email)]
     pub email: String,
+    #[validate(length(min = 12))]
     pub password: String,
 }
 
@@ -28,10 +31,23 @@ pub async fn handler(
         );
     }
 
-    match checks::credentials(&payload.email, &payload.password) {
+    // Validate before processing.
+    match payload.validate() {
         Ok(_) => {} // valid, move on
         Err(error) => {
-            return error;
+            let (bad_field, _) = error.errors().iter().next().unwrap();
+            if bad_field == "email" {
+                return base::response::error(StatusCode::BAD_REQUEST, "Invalid email.", None);
+            }
+            if bad_field == "password" {
+                return base::response::error(
+                    StatusCode::BAD_REQUEST,
+                    "Password must be longer than 12 characters.",
+                    None
+                );
+            }
+
+            return base::response::internal_error(None);
         }
     }
 
@@ -52,7 +68,7 @@ pub async fn handler(
     };
 
     match
-        state.app.services.verify_pass.send(VerifyPassRequest {
+        state.app.worker.verify_pass.send(VerifyPassRequest {
             password: payload.password,
             hash: user.password_hash,
         }).await
