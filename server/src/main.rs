@@ -11,18 +11,18 @@ use axum_server::tls_rustls::RustlsConfig;
 use tower_http::cors::CorsLayer;
 use crate::{
     database::KoiiDatabase,
-    services::{ Services, WorkerSpec, WorkersAllocate },
+    worker::{ Worker, WorkerSpec, WorkersAllocate },
     utils::{ cookie_query, jwt::Jwt, turnstile::Turnstile },
 };
 
 pub mod database;
-pub mod services;
+pub mod worker;
 mod routes;
 pub mod base;
 pub mod utils;
 
 pub struct AppState {
-    pub services: Services,
+    pub worker: Worker,
     pub database: KoiiDatabase,
     pub jwt: Jwt,
     pub turnstile: Turnstile,
@@ -36,7 +36,7 @@ async fn main() {
 
     println!("Initializing server state...");
     let app_state = Arc::new(AppState {
-        services: Services::new(WorkersAllocate {
+        worker: Worker::new(WorkersAllocate {
             // Allocate a reasonable amount of workers for password services.
             // This be using 100% when full load on all workers.
             // Password hashing is heavy after all.
