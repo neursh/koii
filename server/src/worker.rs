@@ -1,6 +1,6 @@
-use tokio::sync::{ mpsc::{ self, Receiver }, oneshot };
+use tokio::sync::oneshot;
 
-use crate::services::{ verify_email::VerifyEmailRequest, verify_pass::VerifyPassRequest };
+use crate::worker::{ verify_email::VerifyEmailRequest, verify_pass::VerifyPassRequest };
 
 pub mod hash_pass;
 pub mod verify_pass;
@@ -18,14 +18,14 @@ pub struct WorkersAllocate {
     pub verify_email: WorkerSpec,
 }
 
-pub struct Services {
+pub struct Worker {
     pub hash_pass: RequestHandler<String, Option<String>>,
     pub verify_pass: RequestHandler<VerifyPassRequest, Option<bool>>,
     pub verify_email: RequestHandler<VerifyEmailRequest, Option<()>>,
 }
-impl Services {
+impl Worker {
     pub fn new(allocate: WorkersAllocate) -> Self {
-        Services {
+        Worker {
             hash_pass: RequestHandler::new(
                 hash_pass::launch,
                 allocate.hash_pass.threads,
@@ -46,15 +46,17 @@ impl Services {
 }
 
 pub struct RequestHandler<R, P> {
-    tx: mpsc::Sender<(R, Option<oneshot::Sender<P>>)>,
+    tx: kanal::AsyncSender<(R, Option<oneshot::Sender<P>>)>,
 }
 impl<R, P> RequestHandler<R, P> {
-    pub fn new<F: Fn(Receiver<(R, Option<oneshot::Sender<P>>)>, usize)>(
+    pub fn new<F: Fn(kanal::AsyncReceiver<(R, Option<oneshot::Sender<P>>)>, usize)>(
         launcher: F,
         threads: usize,
         buffer: usize
     ) -> Self {
-        let (service_tx, service_rx) = mpsc::channel::<(R, Option<oneshot::Sender<P>>)>(buffer);
+        let (service_tx, service_rx) = kanal::bounded_async::<(R, Option<oneshot::Sender<P>>)>(
+            buffer
+        );
         launcher(service_rx, threads);
 
         RequestHandler {

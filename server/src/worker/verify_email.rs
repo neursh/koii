@@ -1,6 +1,6 @@
 use std::{ collections::HashMap, thread, time::Duration };
 use resend_rs::{ Resend, types::{ CreateEmailBaseOptions, EmailTemplate } };
-use tokio::sync::{ mpsc, oneshot };
+use tokio::sync::oneshot;
 
 pub struct VerifyEmailRequest {
     pub email: String,
@@ -9,17 +9,18 @@ pub struct VerifyEmailRequest {
 
 // The oneshot param is required by design for each services, but we don't use it.
 pub fn launch(
-    rx: mpsc::Receiver<(VerifyEmailRequest, Option<oneshot::Sender<Option<()>>>)>,
+    rx: kanal::AsyncReceiver<(VerifyEmailRequest, Option<oneshot::Sender<Option<()>>>)>,
     threads: usize
 ) {
     if threads > 1 {
         eprintln!("But sire, there can only be 1 email worker, I can't do this.");
     }
 
+    let rx = rx.to_sync();
     thread::spawn(|| { worker(rx) });
 }
 
-fn worker(mut rx: mpsc::Receiver<(VerifyEmailRequest, Option<oneshot::Sender<Option<()>>>)>) {
+fn worker(rx: kanal::Receiver<(VerifyEmailRequest, Option<oneshot::Sender<Option<()>>>)>) {
     // DO NOT MOVE THIS UP TO THE LAUNCHER FUNCTION.
     // Resend uses `reqwest` under the hood.
     // And if it's defined as blocking, it can't be initialized inside of tokio context.
@@ -28,11 +29,12 @@ fn worker(mut rx: mpsc::Receiver<(VerifyEmailRequest, Option<oneshot::Sender<Opt
         .expect("RESEND_TOKEN must be set in .env file");
     let resend = Resend::new(&resend_token);
 
+    let mut requests = Vec::with_capacity(100);
+
     loop {
         let waiting = rx.len();
-        let mut requests = Vec::new();
         if waiting > 1 {
-            rx.blocking_recv_many(&mut requests, std::cmp::min(waiting, 100));
+            rx.drain_into(&mut requests).unwrap();
 
             let batch: Vec<CreateEmailBaseOptions> = requests
                 .iter()
@@ -44,11 +46,11 @@ fn worker(mut rx: mpsc::Receiver<(VerifyEmailRequest, Option<oneshot::Sender<Opt
         }
 
         if waiting == 1 {
-            let request = rx.blocking_recv().unwrap();
+            let request = rx.recv().unwrap();
             let _ = resend.emails.send(create_verify_base(&request.0));
         }
 
-        thread::sleep(Duration::from_millis(1200));
+        thread::sleep(Duration::from_millis(5000));
     }
 }
 
