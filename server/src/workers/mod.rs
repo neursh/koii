@@ -1,6 +1,6 @@
 use tokio::sync::oneshot;
 
-use crate::worker::{ verify_email::VerifyEmailRequest, verify_pass::VerifyPassRequest };
+use crate::workers::{ verify_email::VerifyEmailRequest, verify_pass::VerifyPassRequest };
 
 pub mod hash_pass;
 pub mod verify_pass;
@@ -18,14 +18,14 @@ pub struct WorkersAllocate {
     pub verify_email: WorkerSpec,
 }
 
-pub struct Worker {
+pub struct Workers {
     pub hash_pass: RequestHandler<String, Option<String>>,
     pub verify_pass: RequestHandler<VerifyPassRequest, Option<bool>>,
     pub verify_email: RequestHandler<VerifyEmailRequest, Option<()>>,
 }
-impl Worker {
+impl Workers {
     pub fn new(allocate: WorkersAllocate) -> Self {
-        Worker {
+        Workers {
             hash_pass: RequestHandler::new(
                 hash_pass::launch,
                 allocate.hash_pass.threads,
@@ -64,6 +64,7 @@ impl<R, P> RequestHandler<R, P> {
         }
     }
 
+    /// Send a request to the worker and wait for `Result<P, ()>`
     pub async fn send(&self, request: R) -> Result<P, ()> {
         let (one_tx, one_rx) = oneshot::channel::<P>();
 
@@ -78,7 +79,8 @@ impl<R, P> RequestHandler<R, P> {
         }
     }
 
-    pub async fn send_ignore_result(&self, request: R) -> Result<(), ()> {
+    /// Send a request to the worker, but ignore output from the worker.
+    pub async fn send_ignore(&self, request: R) -> Result<(), ()> {
         if let Err(_) = self.tx.send((request, None)).await {
             return Err(());
         }

@@ -13,18 +13,18 @@ use crate::{
     database::KoiiDatabase,
     middlewares::auth,
     utils::{ jwt::Jwt, turnstile::Turnstile },
-    worker::{ Worker, WorkerSpec, WorkersAllocate },
+    workers::{ Workers, WorkerSpec, WorkersAllocate },
 };
 
 pub mod database;
-pub mod worker;
+pub mod workers;
 mod routes;
 pub mod middlewares;
 pub mod base;
 pub mod utils;
 
 pub struct AppState {
-    pub worker: Worker,
+    pub worker: Workers,
     pub database: KoiiDatabase,
     pub jwt: Jwt,
     pub turnstile: Turnstile,
@@ -38,7 +38,7 @@ async fn main() {
 
     println!("Initializing server state...");
     let app_state = Arc::new(AppState {
-        worker: Worker::new(WorkersAllocate {
+        worker: Workers::new(WorkersAllocate {
             // Allocate a reasonable amount of workers for password services.
             // This be using 100% when full load on all workers.
             // Password hashing is heavy after all.
