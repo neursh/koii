@@ -11,13 +11,15 @@ use axum_server::tls_rustls::RustlsConfig;
 use tower_http::cors::CorsLayer;
 use crate::{
     database::KoiiDatabase,
+    middlewares::auth,
+    utils::{ jwt::Jwt, turnstile::Turnstile },
     worker::{ Worker, WorkerSpec, WorkersAllocate },
-    utils::{ cookie_query, jwt::Jwt, turnstile::Turnstile },
 };
 
 pub mod database;
 pub mod worker;
 mod routes;
+pub mod middlewares;
 pub mod base;
 pub mod utils;
 
@@ -76,7 +78,7 @@ async fn main() {
             "/",
             get(async || "hi")
         )
-        .layer(axum::middleware::from_fn_with_state(app_state.clone(), cookie_query::authorize))
+        .layer(axum::middleware::from_fn_with_state(app_state.clone(), auth::authorize))
         .layer(cors)
         .layer(DefaultBodyLimit::max(2 * 1024 * 1024));
 

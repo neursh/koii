@@ -8,7 +8,7 @@ use axum::{
 use crate::{
     base::{ self, response::ResponseModel },
     routes::user::UserRoutesState,
-    utils::cookie_query::{ AuthorizationInfo, AuthorizationStatus },
+    middlewares::auth::{ AuthorizationInfo, AuthorizationStatus },
 };
 
 pub async fn handler(

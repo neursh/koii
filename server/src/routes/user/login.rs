@@ -7,7 +7,7 @@ use crate::{
     base::{ self, response::ResponseModel },
     routes::user::UserRoutesState,
     worker::verify_pass::VerifyPassRequest,
-    utils::{ cookie_query::{ AuthorizationInfo, AuthorizationStatus } },
+    middlewares::auth::{ AuthorizationInfo, AuthorizationStatus },
 };
 
 #[derive(Deserialize, Validate, Clone)]

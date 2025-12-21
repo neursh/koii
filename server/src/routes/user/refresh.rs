@@ -4,7 +4,7 @@ use mongodb::bson;
 use crate::{
     base::{ self, response::ResponseModel, session::{ REFRESH_MAX_AGE, SessionError } },
     routes::user::UserRoutesState,
-    utils::cookie_query::{ AuthorizationInfo, AuthorizationStatus },
+    middlewares::auth::{ AuthorizationInfo, AuthorizationStatus },
 };
 
 pub async fn handler(

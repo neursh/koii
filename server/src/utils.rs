@@ -1,3 +1,2 @@
 pub mod jwt;
-pub mod cookie_query;
 pub mod turnstile;

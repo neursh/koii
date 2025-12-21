@@ -6,9 +6,9 @@ use validator::Validate;
 use crate::{
     base::{ self, response::ResponseModel },
     database::users::UserDocument,
+    middlewares::auth::{ AuthorizationInfo, AuthorizationStatus },
     routes::user::UserRoutesState,
     worker::verify_email::VerifyEmailRequest,
-    utils::{ cookie_query::{ AuthorizationInfo, AuthorizationStatus } },
 };
 use nanoid::nanoid;
 
@@ -93,7 +93,8 @@ pub async fn handler(
             );
         }
         Err(error) => {
-            return parse_db_fail(error);
+            eprintln!("Database error: {:?}", error);
+            return base::response::internal_error(None);
         }
     }
 
@@ -130,23 +131,8 @@ pub async fn handler(
 
     match state.app.database.users.add(user).await {
         Ok(_) => base::response::success(StatusCode::CREATED, None),
-        Err(error) => parse_db_fail(error),
-    }
-}
-
-fn parse_db_fail(error: mongodb::error::Error) -> ResponseModel {
-    use mongodb::error::{ ErrorKind, WriteFailure };
-
-    match *error.kind {
-        ErrorKind::Write(WriteFailure::WriteError(ref write_error)) if write_error.code == 11000 => {
-            base::response::error(
-                StatusCode::BAD_REQUEST,
-                "An account with the same email already exists.",
-                None
-            )
-        }
-        _ => {
-            eprintln!("Database error: {:?}", error.kind);
+        Err(error) => {
+            eprintln!("Database error: {:?}", error);
             return base::response::internal_error(None);
         }
     }
