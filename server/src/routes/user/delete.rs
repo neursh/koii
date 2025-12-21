@@ -29,20 +29,18 @@ pub async fn handler(
         }
     };
 
-    match state.app.database.users.delete(token.id).await {
-        Ok(true) => {
-            return base::response::success(StatusCode::OK, Some(clear_tokens_header()));
-        }
+    return match state.app.database.users.delete(token.id).await {
+        Ok(true) => { base::response::success(StatusCode::OK, Some(clear_tokens_header())) }
         Ok(false) => {
-            return base::response::error(
+            base::response::error(
                 StatusCode::CONFLICT,
                 "The user is already deleted. Why is the cookie still here?",
                 Some(clear_tokens_header())
-            );
+            )
         }
         Err(error) => {
             eprintln!("{}", error);
-            return base::response::internal_error(None);
+            base::response::internal_error(None)
         }
     };
 }

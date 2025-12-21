@@ -8,7 +8,7 @@ use crate::{
     database::users::UserDocument,
     middlewares::auth::{ AuthorizationInfo, AuthorizationStatus },
     routes::user::UserRoutesState,
-    worker::verify_email::VerifyEmailRequest,
+    workers::verify_email::VerifyEmailRequest,
 };
 use nanoid::nanoid;
 
@@ -41,30 +41,27 @@ pub async fn handler(
     }
 
     // Validate before processing.
-    match payload.validate() {
-        Ok(_) => {} // valid, move on
-        Err(error) => {
-            let (bad_field, _) = error.errors().iter().next().unwrap();
-            if bad_field == "email" {
-                return base::response::error(StatusCode::BAD_REQUEST, "Invalid email.", None);
-            }
-            if bad_field == "password" {
-                return base::response::error(
-                    StatusCode::BAD_REQUEST,
-                    "Password must be longer than 12 characters.",
-                    None
-                );
-            }
-            if bad_field == "clientstile" {
-                return base::response::error(
-                    StatusCode::BAD_REQUEST,
-                    "Invalid turnstile token length u cheeky lad UvU",
-                    None
-                );
-            }
-
-            return base::response::internal_error(None);
+    if let Err(error) = payload.validate() {
+        let (bad_field, _) = error.errors().iter().next().unwrap();
+        if bad_field == "email" {
+            return base::response::error(StatusCode::BAD_REQUEST, "Invalid email.", None);
         }
+        if bad_field == "password" {
+            return base::response::error(
+                StatusCode::BAD_REQUEST,
+                "Password must be longer than 12 characters.",
+                None
+            );
+        }
+        if bad_field == "clientstile" {
+            return base::response::error(
+                StatusCode::BAD_REQUEST,
+                "Invalid turnstile token length u cheeky lad UvU",
+                None
+            );
+        }
+
+        return base::response::internal_error(None);
     }
 
     // Check turnstile token.
@@ -110,7 +107,7 @@ pub async fn handler(
 
     if
         state.app.worker.verify_email
-            .send_ignore_result(VerifyEmailRequest {
+            .send_ignore(VerifyEmailRequest {
                 email: payload.email.clone(),
                 verify_code: verify_code.clone(),
             }).await
@@ -129,11 +126,11 @@ pub async fn handler(
         accept_refresh_after: None,
     };
 
-    match state.app.database.users.add(user).await {
+    return match state.app.database.users.add(user).await {
         Ok(_) => base::response::success(StatusCode::CREATED, None),
         Err(error) => {
             eprintln!("Database error: {:?}", error);
-            return base::response::internal_error(None);
+            base::response::internal_error(None)
         }
-    }
+    };
 }

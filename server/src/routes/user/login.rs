@@ -6,7 +6,7 @@ use validator::Validate;
 use crate::{
     base::{ self, response::ResponseModel },
     routes::user::UserRoutesState,
-    worker::verify_pass::VerifyPassRequest,
+    workers::verify_pass::VerifyPassRequest,
     middlewares::auth::{ AuthorizationInfo, AuthorizationStatus },
 };
 
