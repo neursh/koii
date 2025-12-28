@@ -5,7 +5,7 @@ use validator::Validate;
 
 use crate::{
     base::{ self, response::ResponseModel },
-    database::users::UserDocument,
+    store::users::UserDocument,
     middlewares::auth::{ AuthorizationInfo, AuthorizationStatus },
     routes::user::UserRoutesState,
     workers::verify_email::VerifyEmailRequest,
@@ -80,7 +80,7 @@ pub async fn handler(
     }
 
     // Check if the email is already used.
-    match state.app.database.users.get_one(doc! { "email": &payload.email }).await {
+    match state.app.store.users.get_one(doc! { "email": &payload.email }).await {
         Ok(None) => {} // valid, move on
         Ok(Some(_)) => {
             return base::response::error(
@@ -126,7 +126,7 @@ pub async fn handler(
         accept_refresh_after: None,
     };
 
-    return match state.app.database.users.add(user).await {
+    return match state.app.store.users.add(user).await {
         Ok(_) => base::response::success(StatusCode::CREATED, None),
         Err(error) => {
             eprintln!("Database error: {:?}", error);

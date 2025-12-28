@@ -5,7 +5,7 @@ use cookie_rs::{ Cookie, cookie::SameSite };
 use mongodb::bson;
 
 use crate::{
-    database::refresh::{ RefreshDocument, RefreshStore },
+    store::refresh::{ RefreshDocument, RefreshStore },
     utils::jwt::{ Jwt, TokenClaims, TokenUsage },
 };
 

@@ -32,7 +32,7 @@ pub async fn handler(
 
     // Invalidate the refresh token too.
     if
-        let Err(error) = state.app.database.refresh.permit(
+        let Err(error) = state.app.store.refresh.permit(
             &refresh.id,
             bson::DateTime::from_millis((refresh.exp - REFRESH_MAX_AGE) * 1000)
         ).await

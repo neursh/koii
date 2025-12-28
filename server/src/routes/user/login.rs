@@ -51,7 +51,7 @@ pub async fn handler(
         }
     }
 
-    let edge_user = state.app.database.users.get_one(
+    let edge_user = state.app.store.users.get_one(
         bson::doc! {
             "email": payload.email
         }
@@ -74,7 +74,7 @@ pub async fn handler(
         }).await
     {
         Ok(Some(true)) => {
-            match base::session::create(&state.app.database.refresh, &state.app.jwt, user.id).await {
+            match base::session::create(&state.app.store.refresh, &state.app.jwt, user.id).await {
                 Ok(headers) => {
                     return base::response::success(StatusCode::OK, Some(headers));
                 }

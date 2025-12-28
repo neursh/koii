@@ -29,7 +29,7 @@ pub async fn handler(
         }
     };
 
-    return match state.app.database.users.delete(token.id).await {
+    return match state.app.store.users.delete(token.id).await {
         Ok(true) => { base::response::success(StatusCode::OK, Some(clear_tokens_header())) }
         Ok(false) => {
             base::response::error(

@@ -28,7 +28,7 @@ pub async fn handler(
     let refresh_creation = bson::DateTime::from_millis((refresh.exp - REFRESH_MAX_AGE) * 1000);
 
     // First gate: Check with the user info to make sure that the token is not invalidated.
-    match state.app.database.users.check_accept_refresh(&refresh.id, refresh_creation).await {
+    match state.app.store.users.check_accept_refresh(&refresh.id, refresh_creation).await {
         Ok(true) => {} // valid, move on
         Ok(false) => {
             return base::response::error(StatusCode::UNAUTHORIZED, "Get out.", None);
@@ -40,7 +40,7 @@ pub async fn handler(
 
     // Second gate: Check with the refresh base to make sure that the token is a valid issued refresh token,
     // and could only be used once.
-    match state.app.database.refresh.permit(&refresh.id, refresh_creation).await {
+    match state.app.store.refresh.permit(&refresh.id, refresh_creation).await {
         Ok(true) => {} // valid, move on
         Ok(false) => {
             return base::response::error(StatusCode::UNAUTHORIZED, "Get out.", None);
@@ -51,11 +51,7 @@ pub async fn handler(
     }
 
     match
-        base::session::refresh_from_claims(
-            &state.app.database.refresh,
-            &state.app.jwt,
-            refresh
-        ).await
+        base::session::refresh_from_claims(&state.app.store.refresh, &state.app.jwt, refresh).await
     {
         Ok(headers) => {
             return base::response::success(StatusCode::OK, Some(headers));

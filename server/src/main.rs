@@ -10,13 +10,13 @@ use axum::{
 use axum_server::tls_rustls::RustlsConfig;
 use tower_http::cors::CorsLayer;
 use crate::{
-    database::KoiiDatabase,
+    store::Store,
     middlewares::auth,
     utils::{ jwt::Jwt, turnstile::Turnstile },
     workers::{ Workers, WorkerSpec, WorkersAllocate },
 };
 
-pub mod database;
+pub mod store;
 pub mod workers;
 mod routes;
 pub mod middlewares;
@@ -25,7 +25,7 @@ pub mod utils;
 
 pub struct AppState {
     pub worker: Workers,
-    pub database: KoiiDatabase,
+    pub store: Store,
     pub jwt: Jwt,
     pub turnstile: Turnstile,
 }
@@ -55,7 +55,7 @@ async fn main() {
                 buffer: 100,
             },
         }),
-        database: database::initialize().await.unwrap(),
+        store: store::initialize().await.unwrap(),
         jwt: utils::jwt::Jwt::new(),
         turnstile: Turnstile::default(),
     });

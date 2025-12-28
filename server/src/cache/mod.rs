@@ -1,14 +1,13 @@
 use crate::database::{ refresh::RefreshStore, users::UsersStore };
 
-pub mod users;
-pub mod refresh;
+pub mod verifying_users;
 
-pub struct KoiiDatabase {
+pub struct Database {
     pub users: UsersStore,
     pub refresh: RefreshStore,
 }
 
-pub async fn initialize() -> Result<KoiiDatabase, mongodb::error::Error> {
+pub async fn initialize() -> Result<Database, mongodb::error::Error> {
     let mongodb_connection_string = std::env
         ::var("MONGODB_CONNECTION_STRING")
         .expect("MONGODB_CONNECTION_STRING must be set in .env file");
@@ -18,7 +17,7 @@ pub async fn initialize() -> Result<KoiiDatabase, mongodb::error::Error> {
 
     let user_space = mongo_database.collection("users");
     let refresh_space = mongo_database.collection("refresh");
-    Ok(KoiiDatabase {
+    Ok(Database {
         users: UsersStore::default(user_space).await.unwrap(),
         refresh: RefreshStore::default(refresh_space).await.unwrap(),
     })

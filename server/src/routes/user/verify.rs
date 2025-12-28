@@ -25,9 +25,9 @@ pub async fn handler(
         );
     }
 
-    return match state.app.database.users.verify(payload.verify_code).await {
+    return match state.app.store.users.verify(payload.verify_code).await {
         Ok(Some(id)) => {
-            match base::session::create(&state.app.database.refresh, &state.app.jwt, id).await {
+            match base::session::create(&state.app.store.refresh, &state.app.jwt, id).await {
                 Ok(headers) => base::response::success(StatusCode::OK, Some(headers)),
                 Err(_) => base::response::internal_error(None),
             }
