@@ -1,6 +1,4 @@
 # Koii
-This project will be a core part of `neveranyart` open-sourse products, Koii alone is owned solely by me(neurs).
-
 A privacy-friendly thingy to handle authentication for my projects and an OAuth2 provider.
 
 This auth server will allow people to use my projects without having to create an account on each of my future projects. While at it, I'll make it available to third-party services to use Koii as an OAuth2 method.
@@ -23,9 +21,11 @@ For authenticated users, there will be rate limits too, though it won't have muc
 ## Server structure
 - `/base`: Contains primitive stuff to be used later for cleaner code.
 - `/database`: Each module controls a collection on a MongoDB databse.
+- `/cache`: Each module controls a feature on a redis database.
+- `/middlewares`: Self-explanatory.
 - `/routes`: Contains the API endpoints for Koii, obviously.
-- `/services`: Fire up workers for blocking, long CPU-bound tasks, or tasks that needed to run separately, handles differently, or doesn't have to react to each request immediately.
-- `/utils`: Repeated code for API endpoints to use. usage will look like services, but it will be executed on the endpoint itself.
+- `/workers`: Fire up workers for blocking, long CPU-bound tasks, or tasks that needed to run separately, handles differently, or doesn't have to react to each request immediately.
+- `/utils`: Repeated code for API endpoints to use. usage will look like workers, but it will be executed on the endpoint itself.
 
 ## Development status
 - [x] Email service & database.
