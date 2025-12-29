@@ -20,7 +20,7 @@ pub fn launch(
 
 fn worker(rx: kanal::Receiver<(VerifyPassRequest, Option<oneshot::Sender<Option<bool>>>)>) {
     let argon2 = Argon2::default();
-    while let (request, Some(sender)) = rx.recv().unwrap() {
+    while let Ok((request, Some(sender))) = rx.recv() {
         match PasswordHash::new(&request.hash) {
             Ok(hash) => {
                 let _ = sender.send(

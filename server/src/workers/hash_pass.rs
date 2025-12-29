@@ -15,7 +15,7 @@ pub fn launch(
 
 fn worker(rx: kanal::Receiver<(String, Option<oneshot::Sender<Option<String>>>)>) {
     let argon2 = Argon2::default();
-    while let (password, Some(sender)) = rx.recv().unwrap() {
+    while let Ok((password, Some(sender))) = rx.recv() {
         let salt = SaltString::generate(&mut OsRng);
         match argon2.hash_password(password.as_bytes(), &salt) {
             Ok(hashed) => {
