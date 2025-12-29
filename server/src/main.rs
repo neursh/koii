@@ -4,16 +4,16 @@ use axum::{
     Router,
     extract::DefaultBodyLimit,
     http::HeaderValue,
-    routing::get,
     http::{ Method, header::{ AUTHORIZATION, CONTENT_TYPE } },
 };
 use axum_server::tls_rustls::RustlsConfig;
 use tower_http::cors::CorsLayer;
 use crate::{
-    store::Store,
+    cache::Cache,
     middlewares::auth,
+    store::Store,
     utils::{ jwt::Jwt, turnstile::Turnstile },
-    workers::{ Workers, WorkerSpec, WorkersAllocate },
+    workers::{ WorkerSpec, Workers, WorkersAllocate },
 };
 
 pub mod store;
@@ -22,10 +22,12 @@ mod routes;
 pub mod middlewares;
 pub mod base;
 pub mod utils;
+pub mod cache;
 
 pub struct AppState {
     pub worker: Workers,
     pub store: Store,
+    pub cache: Cache,
     pub jwt: Jwt,
     pub turnstile: Turnstile,
 }
@@ -39,9 +41,6 @@ async fn main() {
     println!("Initializing server state...");
     let app_state = Arc::new(AppState {
         worker: Workers::new(WorkersAllocate {
-            // Allocate a reasonable amount of workers for password services.
-            // This be using 100% when full load on all workers.
-            // Password hashing is heavy after all.
             hash_pass: WorkerSpec {
                 threads: 12,
                 buffer: 2048,
@@ -56,6 +55,7 @@ async fn main() {
             },
         }),
         store: store::initialize().await.unwrap(),
+        cache: cache::initialize().await.unwrap(),
         jwt: utils::jwt::Jwt::new(),
         turnstile: Turnstile::default(),
     });
@@ -74,13 +74,9 @@ async fn main() {
 
     let app = Router::new()
         .nest("/user", routes::user::routes(app_state.clone()))
-        .route(
-            "/",
-            get(async || "hi")
-        )
         .layer(axum::middleware::from_fn_with_state(app_state.clone(), auth::authorize))
-        .layer(cors)
-        .layer(DefaultBodyLimit::max(2 * 1024 * 1024));
+        .layer(DefaultBodyLimit::max(2 * 1024 * 1024))
+        .layer(cors);
 
     println!("Hello, world (world here is {})! :3", host);
 

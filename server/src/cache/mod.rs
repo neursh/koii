@@ -1,24 +1,17 @@
-use crate::database::{ refresh::RefreshStore, users::UsersStore };
+pub mod refresh;
 
-pub mod verifying_users;
+use crate::cache::refresh::RefreshCache;
 
-pub struct Database {
-    pub users: UsersStore,
-    pub refresh: RefreshStore,
+pub struct Cache {
+    pub refresh: RefreshCache,
 }
 
-pub async fn initialize() -> Result<Database, mongodb::error::Error> {
-    let mongodb_connection_string = std::env
-        ::var("MONGODB_CONNECTION_STRING")
-        .expect("MONGODB_CONNECTION_STRING must be set in .env file");
+pub async fn initialize() -> Result<Cache, redis::RedisError> {
+    let redis_host = std::env::var("REDIS_HOST").expect("REDIS_HOST must be set in .env file");
 
-    let mongo_client = mongodb::Client::with_uri_str(mongodb_connection_string).await?;
-    let mongo_database = mongo_client.database("koii");
+    let redis_client = redis::Client::open(redis_host)?.get_multiplexed_async_connection().await?;
 
-    let user_space = mongo_database.collection("users");
-    let refresh_space = mongo_database.collection("refresh");
-    Ok(Database {
-        users: UsersStore::default(user_space).await.unwrap(),
-        refresh: RefreshStore::default(refresh_space).await.unwrap(),
+    Ok(Cache {
+        refresh: RefreshCache { endpoint: redis_client.clone() },
     })
 }
