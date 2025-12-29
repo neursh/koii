@@ -1,6 +1,6 @@
 use redis::{ AsyncCommands, aio::MultiplexedConnection };
 
-use crate::base::session::REFRESH_MAX_AGE;
+use crate::utils::session::REFRESH_MAX_AGE;
 
 pub struct RefreshQuery {
     pub user_id: String,

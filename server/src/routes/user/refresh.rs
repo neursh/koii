@@ -2,10 +2,11 @@ use axum::{ Extension, extract::State, http::StatusCode };
 use mongodb::bson;
 
 use crate::{
-    base::{ self, response::ResponseModel, session::{ REFRESH_MAX_AGE, SessionError } },
+    base::{ self, response::ResponseModel },
     cache::refresh::RefreshQuery,
     middlewares::auth::{ AuthorizationInfo, AuthorizationStatus },
     routes::user::UserRoutesState,
+    utils::{ self, session::{ REFRESH_MAX_AGE, SessionError } },
 };
 
 pub async fn handler(
@@ -68,7 +69,7 @@ pub async fn handler(
     }
 
     match
-        base::session::refresh_from_claims(
+        utils::session::refresh_from_claims(
             &mut state.app.cache.refresh.clone(),
             &state.app.jwt,
             refresh

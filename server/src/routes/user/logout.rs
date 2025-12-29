@@ -6,10 +6,11 @@ use axum::{
 };
 
 use crate::{
-    base::{ self, response::ResponseModel, session::REFRESH_MAX_AGE },
+    base::{ self, response::ResponseModel },
     cache::refresh::RefreshQuery,
     middlewares::auth::{ AuthorizationInfo, AuthorizationStatus },
     routes::user::UserRoutesState,
+    utils::session::REFRESH_MAX_AGE,
 };
 
 pub async fn handler(
@@ -37,7 +38,7 @@ pub async fn handler(
             created_at: refresh.exp - REFRESH_MAX_AGE,
         }).await
     {
-        println!("Logout removing refresh key error: {}", error);
+        eprintln!("Logout removing refresh key error: {}", error);
     }
 
     base::response::success(

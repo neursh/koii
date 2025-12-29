@@ -2,9 +2,7 @@ use axum::{ Extension, Json, extract::State, http::StatusCode };
 use serde::Deserialize;
 
 use crate::{
-    base::{ self, response::ResponseModel },
-    routes::user::UserRoutesState,
-    middlewares::auth::{ AuthorizationInfo, AuthorizationStatus },
+    base::{ self, response::ResponseModel }, middlewares::auth::{ AuthorizationInfo, AuthorizationStatus }, routes::user::UserRoutesState, utils
 };
 
 #[derive(Deserialize)]
@@ -28,7 +26,7 @@ pub async fn handler(
     return match state.app.store.users.verify(payload.verify_code).await {
         Ok(Some(id)) => {
             match
-                base::session::create(
+                utils::session::create(
                     &mut state.app.cache.refresh.clone(),
                     &state.app.jwt,
                     id

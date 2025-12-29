@@ -5,9 +5,10 @@ use validator::Validate;
 
 use crate::{
     base::{ self, response::ResponseModel },
-    routes::user::UserRoutesState,
-    workers::verify_pass::VerifyPassRequest,
     middlewares::auth::{ AuthorizationInfo, AuthorizationStatus },
+    routes::user::UserRoutesState,
+    utils,
+    workers::verify_pass::VerifyPassRequest,
 };
 
 #[derive(Deserialize, Validate, Clone)]
@@ -83,7 +84,7 @@ pub async fn handler(
     {
         Ok(Some(true)) => {
             match
-                base::session::create(
+                utils::session::create(
                     &mut state.app.cache.refresh.clone(),
                     &state.app.jwt,
                     user.id
