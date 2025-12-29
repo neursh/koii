@@ -42,26 +42,30 @@ pub async fn handler(
 
     // Validate before processing.
     if let Err(error) = payload.validate() {
-        let (bad_field, _) = error.errors().iter().next().unwrap();
-        if bad_field == "email" {
-            return base::response::error(StatusCode::BAD_REQUEST, "Invalid email.", None);
+        match error.errors().iter().next() {
+            Some((bad_field, _)) => {
+                if bad_field == "email" {
+                    return base::response::error(StatusCode::BAD_REQUEST, "Invalid email.", None);
+                }
+                if bad_field == "password" {
+                    return base::response::error(
+                        StatusCode::BAD_REQUEST,
+                        "Password must be longer than 12 characters.",
+                        None
+                    );
+                }
+                if bad_field == "clientstile" {
+                    return base::response::error(
+                        StatusCode::BAD_REQUEST,
+                        "Invalid turnstile token length u cheeky lad UvU",
+                        None
+                    );
+                }
+            }
+            None => {
+                return base::response::internal_error(None);
+            }
         }
-        if bad_field == "password" {
-            return base::response::error(
-                StatusCode::BAD_REQUEST,
-                "Password must be longer than 12 characters.",
-                None
-            );
-        }
-        if bad_field == "clientstile" {
-            return base::response::error(
-                StatusCode::BAD_REQUEST,
-                "Invalid turnstile token length u cheeky lad UvU",
-                None
-            );
-        }
-
-        return base::response::internal_error(None);
     }
 
     // Check turnstile token.
