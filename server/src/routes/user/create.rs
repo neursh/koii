@@ -1,3 +1,4 @@
+use std::borrow::Cow::Borrowed;
 use serde::Deserialize;
 use axum::{ Extension, Json, extract::State, http::StatusCode };
 use mongodb::bson::{ self, doc };
@@ -36,30 +37,42 @@ pub async fn handler(
     }
 
     // Vro I don't like too much processing yk.
-    if state.semaphores.create.acquire().await.is_err() {
-        return base::response::internal_error(None);
-    }
+    let permit = match state.semaphores.create.acquire().await {
+        Ok(permit) => permit,
+        Err(_) => {
+            return base::response::internal_error(None);
+        }
+    };
 
     // Validate before processing.
     if let Err(error) = payload.validate() {
         match error.errors().iter().next() {
             Some((bad_field, _)) => {
-                if bad_field == "email" {
-                    return base::response::error(StatusCode::BAD_REQUEST, "Invalid email.", None);
-                }
-                if bad_field == "password" {
-                    return base::response::error(
-                        StatusCode::BAD_REQUEST,
-                        "Password must be longer than 12 characters.",
-                        None
-                    );
-                }
-                if bad_field == "clientstile" {
-                    return base::response::error(
-                        StatusCode::BAD_REQUEST,
-                        "Invalid turnstile token length u cheeky lad UvU",
-                        None
-                    );
+                match bad_field {
+                    Borrowed("email") => {
+                        return base::response::error(
+                            StatusCode::BAD_REQUEST,
+                            "Invalid email.",
+                            None
+                        );
+                    }
+                    Borrowed("password") => {
+                        return base::response::error(
+                            StatusCode::BAD_REQUEST,
+                            "Password must be longer than 12 characters.",
+                            None
+                        );
+                    }
+                    Borrowed("clientstile") => {
+                        return base::response::error(
+                            StatusCode::BAD_REQUEST,
+                            "Invalid turnstile token length u cheeky lad UvU",
+                            None
+                        );
+                    }
+                    _ => {
+                        return base::response::internal_error(None);
+                    }
                 }
             }
             None => {
@@ -129,6 +142,8 @@ pub async fn handler(
         created_at: None,
         accept_refresh_after: None,
     };
+
+    drop(permit);
 
     return match state.app.store.users.add(user).await {
         Ok(_) => base::response::success(StatusCode::CREATED, None),
