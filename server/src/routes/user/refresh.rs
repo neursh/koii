@@ -3,8 +3,9 @@ use mongodb::bson;
 
 use crate::{
     base::{ self, response::ResponseModel, session::{ REFRESH_MAX_AGE, SessionError } },
-    routes::user::UserRoutesState,
+    cache::refresh::RefreshQuery,
     middlewares::auth::{ AuthorizationInfo, AuthorizationStatus },
+    routes::user::UserRoutesState,
 };
 
 pub async fn handler(
@@ -24,11 +25,22 @@ pub async fn handler(
         }
         AuthorizationStatus::RefreshActive => {}
     }
-    let refresh = authorization_info.refresh.unwrap();
-    let refresh_creation = bson::DateTime::from_millis((refresh.exp - REFRESH_MAX_AGE) * 1000);
+
+    let refresh = match authorization_info.refresh {
+        Some(refresh) => refresh,
+        None => {
+            return base::response::error(StatusCode::UNAUTHORIZED, "Get out.", None);
+        }
+    };
+    let refresh_creation = refresh.exp - REFRESH_MAX_AGE;
 
     // First gate: Check with the user info to make sure that the token is not invalidated.
-    match state.app.store.users.check_accept_refresh(&refresh.id, refresh_creation).await {
+    match
+        state.app.store.users.check_accept_refresh(
+            &refresh.id,
+            bson::DateTime::from_millis(refresh_creation * 1000)
+        ).await
+    {
         Ok(true) => {} // valid, move on
         Ok(false) => {
             return base::response::error(StatusCode::UNAUTHORIZED, "Get out.", None);
@@ -40,7 +52,12 @@ pub async fn handler(
 
     // Second gate: Check with the refresh base to make sure that the token is a valid issued refresh token,
     // and could only be used once.
-    match state.app.store.refresh.permit(&refresh.id, refresh_creation).await {
+    match
+        state.app.cache.refresh.clone().permit(RefreshQuery {
+            user_id: refresh.id.clone(),
+            created_at: refresh_creation,
+        }).await
+    {
         Ok(true) => {} // valid, move on
         Ok(false) => {
             return base::response::error(StatusCode::UNAUTHORIZED, "Get out.", None);
@@ -51,7 +68,11 @@ pub async fn handler(
     }
 
     match
-        base::session::refresh_from_claims(&state.app.store.refresh, &state.app.jwt, refresh).await
+        base::session::refresh_from_claims(
+            &mut state.app.cache.refresh.clone(),
+            &state.app.jwt,
+            refresh
+        ).await
     {
         Ok(headers) => {
             return base::response::success(StatusCode::OK, Some(headers));

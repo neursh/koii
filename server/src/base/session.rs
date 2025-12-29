@@ -2,10 +2,9 @@ use std::time::Duration;
 
 use axum::{ http::{ HeaderName, header::SET_COOKIE }, response::AppendHeaders };
 use cookie_rs::{ Cookie, cookie::SameSite };
-use mongodb::bson;
 
 use crate::{
-    store::refresh::{ RefreshDocument, RefreshStore },
+    cache::refresh::{ RefreshCache, RefreshQuery },
     utils::jwt::{ Jwt, TokenClaims, TokenUsage },
 };
 
@@ -21,7 +20,7 @@ pub enum SessionError {
 
 /// Will panic if jwt isn't supplied with a valid private key.
 pub async fn create(
-    refresh_store: &RefreshStore,
+    refresh_cache: &mut RefreshCache,
     jwt: &Jwt,
     id: String
 ) -> Result<AppendHeaders<Vec<(HeaderName, String)>>, SessionError> {
@@ -43,9 +42,9 @@ pub async fn create(
     let refresh_cookie = construct_cookie("refresh", refresh, REFRESH_MAX_AGE);
 
     return match
-        refresh_store.add(RefreshDocument {
+        refresh_cache.add(RefreshQuery {
             user_id: id,
-            created_at: bson::DateTime::from_millis(created_at * 1000),
+            created_at: created_at,
         }).await
     {
         Ok(_) => Ok(AppendHeaders(vec![(SET_COOKIE, token_cookie), (SET_COOKIE, refresh_cookie)])),
@@ -55,25 +54,25 @@ pub async fn create(
 
 /// Will panic if jwt isn't supplied with a valid private key.
 pub async fn refresh_from_claims(
-    refresh_store: &RefreshStore,
+    refresh_cache: &mut RefreshCache,
     jwt: &Jwt,
     refresh: TokenClaims
 ) -> Result<AppendHeaders<Vec<(HeaderName, String)>>, SessionError> {
     if let TokenUsage::Refresh = refresh.usage {
-        return create(refresh_store, jwt, refresh.id).await;
+        return create(refresh_cache, jwt, refresh.id).await;
     }
     Err(SessionError::BadRefreshToken)
 }
 
 /// Will panic if jwt isn't supplied with a valid private key.
 pub async fn refresh(
-    refresh_store: &RefreshStore,
+    refresh_cache: &mut RefreshCache,
     jwt: &Jwt,
     refresh: String
 ) -> Result<AppendHeaders<Vec<(HeaderName, String)>>, SessionError> {
     if let Some(refresh_claims) = jwt.verify(refresh) {
         if let TokenUsage::Refresh = refresh_claims.usage {
-            return create(refresh_store, jwt, refresh_claims.id).await;
+            return create(refresh_cache, jwt, refresh_claims.id).await;
         }
     }
     Err(SessionError::BadRefreshToken)

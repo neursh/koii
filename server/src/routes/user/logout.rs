@@ -4,12 +4,12 @@ use axum::{
     http::{ StatusCode, header::SET_COOKIE },
     response::AppendHeaders,
 };
-use mongodb::bson;
 
 use crate::{
     base::{ self, response::ResponseModel, session::REFRESH_MAX_AGE },
-    routes::user::UserRoutesState,
+    cache::refresh::RefreshQuery,
     middlewares::auth::{ AuthorizationInfo, AuthorizationStatus },
+    routes::user::UserRoutesState,
 };
 
 pub async fn handler(
@@ -32,10 +32,10 @@ pub async fn handler(
 
     // Invalidate the refresh token too.
     if
-        let Err(error) = state.app.store.refresh.permit(
-            &refresh.id,
-            bson::DateTime::from_millis((refresh.exp - REFRESH_MAX_AGE) * 1000)
-        ).await
+        let Err(error) = state.app.cache.refresh.clone().permit(RefreshQuery {
+            user_id: refresh.id,
+            created_at: refresh.exp - REFRESH_MAX_AGE,
+        }).await
     {
         println!("Logout removing refresh key error: {}", error);
     }

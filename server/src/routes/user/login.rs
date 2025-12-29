@@ -35,19 +35,27 @@ pub async fn handler(
     match payload.validate() {
         Ok(_) => {} // valid, move on
         Err(error) => {
-            let (bad_field, _) = error.errors().iter().next().unwrap();
-            if bad_field == "email" {
-                return base::response::error(StatusCode::BAD_REQUEST, "Invalid email.", None);
+            match error.errors().iter().next() {
+                Some((bad_field, _)) => {
+                    if bad_field == "email" {
+                        return base::response::error(
+                            StatusCode::BAD_REQUEST,
+                            "Invalid email.",
+                            None
+                        );
+                    }
+                    if bad_field == "password" {
+                        return base::response::error(
+                            StatusCode::BAD_REQUEST,
+                            "Password must be longer than 12 characters.",
+                            None
+                        );
+                    }
+                }
+                None => {
+                    return base::response::internal_error(None);
+                }
             }
-            if bad_field == "password" {
-                return base::response::error(
-                    StatusCode::BAD_REQUEST,
-                    "Password must be longer than 12 characters.",
-                    None
-                );
-            }
-
-            return base::response::internal_error(None);
         }
     }
 
@@ -74,7 +82,13 @@ pub async fn handler(
         }).await
     {
         Ok(Some(true)) => {
-            match base::session::create(&state.app.store.refresh, &state.app.jwt, user.id).await {
+            match
+                base::session::create(
+                    &mut state.app.cache.refresh.clone(),
+                    &state.app.jwt,
+                    user.id
+                ).await
+            {
                 Ok(headers) => {
                     return base::response::success(StatusCode::OK, Some(headers));
                 }
