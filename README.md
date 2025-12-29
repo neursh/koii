@@ -20,7 +20,7 @@ For authenticated users, there will be rate limits too, though it won't have muc
 
 ## Server structure
 - `/base`: Contains primitive stuff to be used later for cleaner code.
-- `/database`: Each module controls a collection on a MongoDB databse.
+- `/store`: Each module controls a collection on a MongoDB databse.
 - `/cache`: Each module controls a feature on a redis database.
 - `/middlewares`: Self-explanatory.
 - `/routes`: Contains the API endpoints for Koii, obviously.
