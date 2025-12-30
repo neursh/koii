@@ -4,14 +4,10 @@ use axum::{ http::{ HeaderName, header::SET_COOKIE }, response::AppendHeaders };
 use cookie_rs::{ Cookie, cookie::SameSite };
 
 use crate::{
-    cache::refresh::{ RefreshCache, RefreshQuery },
+    cache::refresh::{ RefreshCache, RefreshCacheQuery },
+    consts::{ REFRESH_MAX_AGE, TOKEN_MAX_AGE },
     utils::jwt::{ Jwt, TokenClaims, TokenUsage },
 };
-
-/// 15 minutes
-pub const TOKEN_MAX_AGE: i64 = 900;
-/// 15 days
-pub const REFRESH_MAX_AGE: i64 = 1296000;
 
 pub enum SessionError {
     DatabaseError,
@@ -42,7 +38,7 @@ pub async fn create(
     let refresh_cookie = construct_cookie("refresh", refresh, REFRESH_MAX_AGE);
 
     return match
-        refresh_cache.add(RefreshQuery {
+        refresh_cache.add(RefreshCacheQuery {
             user_id: id,
             created_at: created_at,
         }).await
