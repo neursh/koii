@@ -8,10 +8,10 @@ pub struct TurnstileResult {
     pub challenge_ts: Option<String>,
     pub hostname: Option<String>,
     #[serde(rename = "error-codes")]
-    pub error_codes: Vec<String>,
+    pub error_codes: Option<Vec<String>>,
     pub action: Option<String>,
     pub cdata: Option<String>,
-    pub messages: Vec<String>,
+    pub messages: Option<Vec<String>>,
     pub metadata: Option<serde_json::Value>,
 }
 
