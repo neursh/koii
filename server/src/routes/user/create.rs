@@ -1,4 +1,3 @@
-use std::borrow::Cow::Borrowed;
 use serde::Deserialize;
 use axum::{ Extension, Json, extract::State, http::StatusCode };
 use mongodb::{ bson::{ self, doc }, error::WriteFailure };
@@ -6,7 +5,6 @@ use validator::Validate;
 
 use crate::{
     base::{ self, response::ResponseModel },
-    cache::verify::VerifyCacheQuery,
     middlewares::auth::{ AuthorizationInfo, AuthorizationStatus },
     routes::user::UserRoutesState,
     store::users::UserDocument,
@@ -23,35 +21,6 @@ pub struct CreatePayload {
     #[validate(length(max = 2048))]
     pub clientstile: String,
 }
-impl CreatePayload {
-    fn check(&self) -> Result<(), &str> {
-        if let Err(error) = self.validate() {
-            match error.errors().iter().next() {
-                Some((bad_field, _)) => {
-                    match bad_field {
-                        Borrowed("email") => {
-                            return Err("Invalid email.");
-                        }
-                        Borrowed("password") => {
-                            return Err("Password must be longer than 12 characters.");
-                        }
-                        Borrowed("clientstile") => {
-                            return Err("Something went wrong, refresh the page and try again.");
-                        }
-                        _ => {
-                            return Err("unknown");
-                        }
-                    }
-                }
-                None => {
-                    return Err("unknown");
-                }
-            }
-        }
-
-        Ok(())
-    }
-}
 
 pub async fn handler(
     Extension(authorization_info): Extension<AuthorizationInfo>,
@@ -67,19 +36,19 @@ pub async fn handler(
         );
     }
 
-    // Accquire a semaphore permit.
-    let permit = match state.semaphores.create.acquire().await {
-        Ok(permit) => permit,
-        Err(_) => {
-            return base::response::internal_error(None);
-        }
-    };
-
     // Validate before processing.
-    match payload.check() {
+    match payload.validate() {
         Ok(_) => {} // valid, move on
-        Err(message) => {
-            return base::response::error(StatusCode::BAD_REQUEST, message, None);
+        Err(field) => {
+            if let Some(field) = field.errors().iter().next() {
+                return base::response::error(
+                    StatusCode::BAD_REQUEST,
+                    &format!("A field is not satisfied: {}", field.0),
+                    None
+                );
+            }
+
+            return base::response::internal_error(None);
         }
     }
 
@@ -94,22 +63,6 @@ pub async fn handler(
             );
         }
         Err(_) => {
-            return base::response::internal_error(None);
-        }
-    }
-
-    // Check if email is used before hashing the password to avoid excessive computes.
-    match state.app.store.users.get_one(doc! { "email": &payload.email }).await {
-        Ok(None) => {} // valid, move on
-        Ok(Some(_)) => {
-            return base::response::error(
-                StatusCode::CONFLICT,
-                "An account with the same email already exists.",
-                None
-            );
-        }
-        Err(error) => {
-            eprintln!("Database error: {:?}", error);
             return base::response::internal_error(None);
         }
     }
@@ -133,6 +86,7 @@ pub async fn handler(
         email: payload.email.clone(),
         password_hash,
         verify_requested: Some(bson::DateTime::now()),
+        verify_code: Some(verify_code.clone()),
         created_at: None,
         accept_refresh_after: None,
     };
@@ -144,14 +98,14 @@ pub async fn handler(
                 mongodb::error::ErrorKind::Write(WriteFailure::WriteError(ref write_error)) if
                     write_error.code == 11000
                 => {
-                    return base::response::error(
-                        StatusCode::BAD_REQUEST,
-                        "An account with the same email already exists.",
+                    return base::response::result(
+                        StatusCode::CREATED,
+                        "Check your inbox to verify your email!".into(),
                         None
                     );
                 }
                 _ => {
-                    eprintln!("Database error: {:?}", error.kind);
+                    tracing::error!(name: "user_store", "Database failed to store the user: {}", error.kind);
                     return base::response::internal_error(None);
                 }
             }
@@ -159,33 +113,23 @@ pub async fn handler(
     }
 
     // Send a verification email to the user.
-    if
-        state.app.worker.verify_email
-            .send_ignore(VerifyEmailRequest {
-                email: payload.email.clone(),
-                verify_code: verify_code.clone(),
-            }).await
-            .is_err()
-    {
-        return base::response::internal_error(None);
-    }
-
-    // Cache the verify code.
     match
-        state.app.cache.verify.clone().add(VerifyCacheQuery {
-            user_id: user_id.clone(),
-            code: verify_code,
+        state.app.worker.verify_email.send_ignore(VerifyEmailRequest {
+            email: payload.email,
+            verify_code,
         }).await
     {
         Ok(_) => {}
-        Err(error) => {
-            eprintln!("Database error: {:?}", error);
+        Err(_) => {
+            tracing::error!({ user_id = user_id, },"Email service failed to deliver the verification link.");
+            tracing::warn!(name: "email_service", "This indicates that the email service is down.");
             return base::response::internal_error(None);
         }
     }
 
-    // Dropping semaphore permit, we done here.
-    drop(permit);
-
-    return base::response::success(StatusCode::CREATED, None);
+    base::response::result(
+        StatusCode::CREATED,
+        "Check your inbox to verify your email!".into(),
+        None
+    )
 }
