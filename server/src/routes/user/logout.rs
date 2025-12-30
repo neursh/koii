@@ -7,10 +7,10 @@ use axum::{
 
 use crate::{
     base::{ self, response::ResponseModel },
-    cache::refresh::RefreshQuery,
+    cache::refresh::RefreshCacheQuery,
+    consts::REFRESH_MAX_AGE,
     middlewares::auth::{ AuthorizationInfo, AuthorizationStatus },
     routes::user::UserRoutesState,
-    utils::session::REFRESH_MAX_AGE,
 };
 
 pub async fn handler(
@@ -33,7 +33,7 @@ pub async fn handler(
 
     // Invalidate the refresh token too.
     if
-        let Err(error) = state.app.cache.refresh.clone().permit(RefreshQuery {
+        let Err(error) = state.app.cache.refresh.clone().permit(RefreshCacheQuery {
             user_id: refresh.id,
             created_at: refresh.exp - REFRESH_MAX_AGE,
         }).await

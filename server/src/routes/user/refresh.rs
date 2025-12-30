@@ -3,10 +3,11 @@ use mongodb::bson;
 
 use crate::{
     base::{ self, response::ResponseModel },
-    cache::refresh::RefreshQuery,
+    cache::refresh::RefreshCacheQuery,
+    consts::REFRESH_MAX_AGE,
     middlewares::auth::{ AuthorizationInfo, AuthorizationStatus },
     routes::user::UserRoutesState,
-    utils::{ self, session::{ REFRESH_MAX_AGE, SessionError } },
+    utils::{ self, session::SessionError },
 };
 
 pub async fn handler(
@@ -54,7 +55,7 @@ pub async fn handler(
     // Second gate: Check with the refresh base to make sure that the token is a valid issued refresh token,
     // and could only be used once.
     match
-        state.app.cache.refresh.clone().permit(RefreshQuery {
+        state.app.cache.refresh.clone().permit(RefreshCacheQuery {
             user_id: refresh.id.clone(),
             created_at: refresh_creation,
         }).await

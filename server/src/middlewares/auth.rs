@@ -10,7 +10,8 @@ use cookie_rs::Cookie;
 
 use crate::{
     AppState,
-    utils::{ jwt::{ Jwt, TokenClaims, TokenUsage }, session::{ REFRESH_MAX_AGE, TOKEN_MAX_AGE } },
+    consts::{ REFRESH_MAX_AGE, TOKEN_MAX_AGE },
+    utils::jwt::{ Jwt, TokenClaims, TokenUsage },
 };
 
 #[derive(Clone)]
