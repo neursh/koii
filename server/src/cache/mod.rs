@@ -1,9 +1,11 @@
 pub mod refresh;
+pub mod verify;
 
-use crate::cache::refresh::RefreshCache;
+use crate::cache::{ refresh::RefreshCache, verify::VerifyCache };
 
 pub struct Cache {
     pub refresh: RefreshCache,
+    pub verify: VerifyCache,
 }
 
 pub async fn initialize() -> Result<Cache, redis::RedisError> {
@@ -13,5 +15,6 @@ pub async fn initialize() -> Result<Cache, redis::RedisError> {
 
     Ok(Cache {
         refresh: RefreshCache { endpoint: redis_client.clone() },
+        verify: VerifyCache { endpoint: redis_client.clone() },
     })
 }
