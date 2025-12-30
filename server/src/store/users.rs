@@ -3,6 +3,8 @@ use std::time::Duration;
 use mongodb::{ IndexModel, bson::{ self, DateTime, Document }, options::{ IndexOptions } };
 use serde::{ Deserialize, Serialize };
 
+use crate::consts::EMAIL_VERIFY_EXPIRE;
+
 #[derive(Deserialize, Serialize)]
 pub struct UserDocument {
     /// User's email.
@@ -19,10 +21,6 @@ pub struct UserDocument {
     /// the account was verifed. (TTL: 10 minutes)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub verify_requested: Option<bson::DateTime>,
-
-    /// The actual verify code.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub verify_code: Option<String>,
 
     /// The time when user verified the account, locking in as the creation time.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -55,7 +53,7 @@ impl UsersStore {
                 .keys(bson::doc! { "verify_requested": 1 })
                 .options(
                     IndexOptions::builder()
-                        .expire_after(Duration::from_secs(10 * 60))
+                        .expire_after(Duration::from_secs(EMAIL_VERIFY_EXPIRE as u64))
                         .build()
                 )
                 .build()
@@ -71,33 +69,22 @@ impl UsersStore {
         Ok(())
     }
 
-    /// Verify user from the token sent via email.
-    ///
-    /// When user found and updated, `_id` will be returned, allowing verify to create a jwt.
-    pub async fn verify(
-        &self,
-        verify_code: String
-    ) -> Result<Option<String>, mongodb::error::Error> {
-        if let Some(target) = self.get_one(bson::doc! { "verify_code": &verify_code }).await? {
-            let result = self.endpoint.update_one(
-                bson::doc! { "verify_code": &verify_code },
-                bson::doc! {
+    /// Confirming user after the user has validated their email.
+    pub async fn confirm(&self, user_id: &str) -> Result<bool, mongodb::error::Error> {
+        let result = self.endpoint.update_one(
+            bson::doc! { "_id": user_id },
+            bson::doc! {
                 "$set": {
                     "created_at": DateTime::now(),
                     "accept_refresh_after": DateTime::now(),
                 },
                 "$unset": {
                     "verify_requested": "",
-                    "verify_code" : ""
                 }
             }
-            ).await?;
-            if result.modified_count == 1 {
-                return Ok(Some(target.id));
-            }
-        }
+        ).await?;
 
-        Ok(None)
+        Ok(result.modified_count == 1)
     }
 
     pub async fn get_one(
