@@ -26,47 +26,29 @@ pub async fn handler(
         );
     }
 
-    // Get user id from cache.
-    let user_id = match state.app.cache.verify.clone().permit(&payload.verify_code).await {
-        Ok(Some(user_id)) => user_id,
+    return match state.app.store.users.verify(payload.verify_code).await {
+        Ok(Some(id)) => {
+            match
+                utils::session::create(
+                    &mut state.app.cache.refresh.clone(),
+                    &state.app.jwt,
+                    id
+                ).await
+            {
+                Ok(headers) => base::response::success(StatusCode::OK, Some(headers)),
+                Err(_) => base::response::internal_error(None),
+            }
+        }
         Ok(None) => {
-            return base::response::error(
+            base::response::error(
                 StatusCode::NOT_FOUND,
                 "There's no account associated to this verify token.",
                 None
-            );
+            )
         }
         Err(error) => {
             println!("{:?}", error);
-            return base::response::internal_error(None);
-        }
-    };
-
-    // Confirm with database.
-    match state.app.store.users.confirm(&user_id).await {
-        Ok(true) => {}
-        Ok(false) => {
-            return base::response::error(
-                StatusCode::NOT_FOUND,
-                "There's no account associated to this verify token.",
-                None
-            );
-        }
-        Err(error) => {
-            println!("{:?}", error);
-            return base::response::internal_error(None);
-        }
-    }
-
-    // Return session.
-    match
-        utils::session::create(&mut state.app.cache.refresh.clone(), &state.app.jwt, user_id).await
-    {
-        Ok(headers) => {
-            return base::response::success(StatusCode::OK, Some(headers));
-        }
-        Err(_) => {
-            return base::response::internal_error(None);
+            base::response::internal_error(None)
         }
     };
 }

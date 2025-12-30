@@ -22,6 +22,10 @@ pub struct UserDocument {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub verify_requested: Option<bson::DateTime>,
 
+    /// The actual verify code.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub verify_code: Option<String>,
+
     /// The time when user verified the account, locking in as the creation time.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub created_at: Option<bson::DateTime>,
@@ -69,22 +73,33 @@ impl UsersStore {
         Ok(())
     }
 
-    /// Confirming user after the user has validated their email.
-    pub async fn confirm(&self, user_id: &str) -> Result<bool, mongodb::error::Error> {
-        let result = self.endpoint.update_one(
-            bson::doc! { "_id": user_id },
-            bson::doc! {
+    /// Verify user from the token sent via email.
+    ///
+    /// When user found and updated, `_id` will be returned, allowing verify to create a jwt.
+    pub async fn verify(
+        &self,
+        verify_code: String
+    ) -> Result<Option<String>, mongodb::error::Error> {
+        if let Some(target) = self.get_one(bson::doc! { "verify_code": &verify_code }).await? {
+            let result = self.endpoint.update_one(
+                bson::doc! { "verify_code": &verify_code },
+                bson::doc! {
                 "$set": {
                     "created_at": DateTime::now(),
                     "accept_refresh_after": DateTime::now(),
                 },
                 "$unset": {
                     "verify_requested": "",
+                    "verify_code" : ""
                 }
             }
-        ).await?;
+            ).await?;
+            if result.modified_count == 1 {
+                return Ok(Some(target.id));
+            }
+        }
 
-        Ok(result.modified_count == 1)
+        Ok(None)
     }
 
     pub async fn get_one(
