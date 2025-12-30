@@ -23,6 +23,7 @@ pub mod middlewares;
 pub mod base;
 pub mod utils;
 pub mod cache;
+pub mod consts;
 
 pub struct AppState {
     pub worker: Workers,
