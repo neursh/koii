@@ -32,37 +32,23 @@ pub async fn handler(
         );
     }
 
-    // Validate before processing.
     match payload.validate() {
-        Ok(_) => {} // valid, move on
-        Err(error) => {
-            match error.errors().iter().next() {
-                Some((bad_field, _)) => {
-                    if bad_field == "email" {
-                        return base::response::error(
-                            StatusCode::BAD_REQUEST,
-                            "Invalid email.",
-                            None
-                        );
-                    }
-                    if bad_field == "password" {
-                        return base::response::error(
-                            StatusCode::BAD_REQUEST,
-                            "Password must be longer than 12 characters.",
-                            None
-                        );
-                    }
-                }
-                None => {
-                    return base::response::internal_error(None);
-                }
+        Ok(_) => {}
+        Err(field) => {
+            if let Some(field) = field.errors().iter().next() {
+                return base::response::error(
+                    StatusCode::BAD_REQUEST,
+                    &format!("A field is not satisfied: {}", field.0),
+                    None
+                );
             }
+            return base::response::internal_error(None);
         }
     }
 
     let edge_user = state.app.store.users.get_one(
         bson::doc! {
-            "email": payload.email
+            "email": &payload.email
         }
     ).await;
     let user = match edge_user {
@@ -71,7 +57,7 @@ pub async fn handler(
             return base::response::error(StatusCode::FORBIDDEN, "Wrong email or password.", None);
         }
         Err(error) => {
-            eprintln!("Database error: {:?}", error.kind);
+            tracing::error!(target: "user.login", "{}\n{}", payload.email, error);
             return base::response::internal_error(None);
         }
     };
@@ -93,7 +79,8 @@ pub async fn handler(
                 Ok(headers) => {
                     return base::response::success(StatusCode::OK, Some(headers));
                 }
-                Err(_) => {
+                Err(error) => {
+                    tracing::error!(target: "user.login", "{}\n{}", payload.email, error);
                     return base::response::internal_error(None);
                 }
             };
@@ -101,8 +88,8 @@ pub async fn handler(
         Ok(Some(false)) => {
             return base::response::error(StatusCode::FORBIDDEN, "Wrong email or password.", None);
         }
-        // Err & Ok(None)
         _ => {
+            tracing::error!(target: "user.login", "Verify password worker failure.");
             return base::response::internal_error(None);
         }
     };

@@ -7,6 +7,7 @@ pub struct Store {
 }
 
 pub async fn initialize() -> Result<Store, mongodb::error::Error> {
+    tracing::info!(target: "mongodb_connector", "Connecting to mongodb host...");
     let mongodb_connection_string = std::env
         ::var("MONGODB_CONNECTION_STRING")
         .expect("MONGODB_CONNECTION_STRING must be set in .env file");

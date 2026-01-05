@@ -133,7 +133,7 @@ impl UsersStore {
         Ok(false)
     }
 
-    pub async fn delete(&self, id: String) -> Result<bool, mongodb::error::Error> {
+    pub async fn delete(&self, id: &str) -> Result<bool, mongodb::error::Error> {
         Ok(self.endpoint.delete_one(bson::doc! { "_id": id }).await?.deleted_count == 1)
     }
 }

@@ -7,7 +7,7 @@ use axum::{
     http::{ Method, header::{ AUTHORIZATION, CONTENT_TYPE } },
 };
 use axum_server::tls_rustls::RustlsConfig;
-use tower_http::cors::CorsLayer;
+use tower_http::{ cors::CorsLayer, trace::TraceLayer };
 use crate::{
     cache::Cache,
     middlewares::auth,
@@ -36,10 +36,11 @@ pub struct AppState {
 #[tokio::main]
 async fn main() {
     dotenv::dotenv().ok();
+    tracing_subscriber::fmt().init();
 
     let host = std::env::var("HOST").expect("HOST must be set in .env file");
 
-    println!("Initializing server state...");
+    tracing::info!(target: "serverproc", "Initializing server state...");
     let app_state = Arc::new(AppState {
         worker: Workers::new(WorkersAllocate {
             hash_pass: WorkerSpec {
@@ -76,15 +77,16 @@ async fn main() {
     let app = Router::new()
         .nest("/user", routes::user::routes(app_state.clone()))
         .layer(axum::middleware::from_fn_with_state(app_state.clone(), auth::authorize))
+        .layer(TraceLayer::new_for_http())
         .layer(DefaultBodyLimit::max(2 * 1024 * 1024))
         .layer(cors);
 
-    println!("Hello, world (world here is {})! :3", host);
+    tracing::info!(target: "serverproc", "Hello, world (world here is {})! :3", host);
 
     let mode: Vec<String> = args().collect();
     match mode[1].as_str() {
         "online" => {
-            println!("Serving in online mode...");
+            tracing::info!(target: "serverproc", "Serving in online mode...");
             rustls::crypto::ring::default_provider().install_default().unwrap();
             let tls_config = RustlsConfig::from_pem_file(
                 "cf-ocert.pem",
@@ -96,9 +98,10 @@ async fn main() {
                 .unwrap();
         }
         "offline" => {
-            println!("Serving in offline mode...");
+            tracing::info!(target: "serverproc", "Serving in offline mode...");
+            tracing::warn!(target: "serverproc", "Offline mode is for local development only, please do not fuck this up, plwease QwQ");
             axum_server::bind(host.parse().unwrap()).serve(app.into_make_service()).await.unwrap();
         }
-        _ => panic!("Invalid mode."),
+        _ => tracing::info!(target: "serverproc", "No mode chosen, shutting down..."),
     }
 }

@@ -38,7 +38,7 @@ pub async fn handler(
             created_at: refresh.exp - REFRESH_MAX_AGE,
         }).await
     {
-        eprintln!("Logout removing refresh key error: {}", error);
+        tracing::error!(target: "user.logout", "Can't invalidate refresh key when logout: {}", error);
     }
 
     base::response::success(

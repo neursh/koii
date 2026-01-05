@@ -29,7 +29,7 @@ pub async fn handler(
         }
     };
 
-    return match state.app.store.users.delete(token.id).await {
+    return match state.app.store.users.delete(&token.id).await {
         Ok(true) => { base::response::success(StatusCode::OK, Some(clear_tokens_header())) }
         Ok(false) => {
             base::response::error(
@@ -39,7 +39,7 @@ pub async fn handler(
             )
         }
         Err(error) => {
-            eprintln!("{}", error);
+            tracing::error!(target: "endpoint.delete", "{}\n{}", token.id, error);
             base::response::internal_error(None)
         }
     };

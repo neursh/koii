@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{ fmt::Display, time::Duration };
 
 use axum::{ http::{ HeaderName, header::SET_COOKIE }, response::AppendHeaders };
 use cookie_rs::{ Cookie, cookie::SameSite };
@@ -12,6 +12,11 @@ use crate::{
 pub enum SessionError {
     DatabaseError,
     BadRefreshToken,
+}
+impl Display for SessionError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self)
+    }
 }
 
 /// Will panic if jwt isn't supplied with a valid private key.

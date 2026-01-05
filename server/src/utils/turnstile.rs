@@ -57,7 +57,7 @@ impl Turnstile {
             let request_instance = match request_construct.try_clone() {
                 Some(instance) => instance,
                 None => {
-                    eprintln!("Turnstile: Bad request construct.");
+                    tracing::error!(target: "turnstile.request", "Bad request construct");
                     break None;
                 }
             };
@@ -68,12 +68,12 @@ impl Turnstile {
                             break Some(response);
                         }
                         Err(error) => {
-                            eprintln!("Turnstile parsing: {}", error);
+                            tracing::error!(target: "turnstile.parser", "{}", error);
                         }
                     }
                 }
                 Err(error) => {
-                    eprintln!("Turnstile verify request: {}", error);
+                    tracing::error!(target: "turnstile.verify", "{}", error);
                 }
             }
 
