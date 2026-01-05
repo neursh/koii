@@ -1,4 +1,11 @@
 # Koii
+
+<div align=center>
+
+  ![neverany](https://github.com/user-attachments/assets/fb384667-f5b0-4c84-950b-67a68df9d00c)
+  
+</div>
+
 A privacy-friendly thingy to handle authentication for my projects and an OAuth2 provider.
 
 This auth server will allow people to use my projects without having to create an account on each of my future projects. While at it, I'll make it available to third-party services to use Koii as an OAuth2 method.
