@@ -1,8 +1,8 @@
 # Koii
 
 <div align=center>
-
-  ![neverany](https://github.com/user-attachments/assets/fb384667-f5b0-4c84-950b-67a68df9d00c)
+  
+  ![neverany](https://github.com/user-attachments/assets/03d642d4-47e4-4107-bd30-14fa5181f144)
   
 </div>
 
