@@ -5,12 +5,12 @@ edition = "2024"
 
 [dependencies]
 argon2 = "0.5.3"
-axum = "0.8.6"
+axum = { version = "0.8.6", features = ["macros"] }
 axum-server = { version = "0.7.3", features = ["tls-rustls"] }
+blake3 = { version = "1.8.3", features = ["digest"] }
 cookie-rs = "0.4.1"
 dashmap = "6.1.0"
 dotenv = "0.15.0"
-jsonwebtoken = { version = "10.2.0", features = ["rust_crypto", "use_pem"] }
 kanal = "0.1.1"
 mongodb = { version = "3.3.0", features = ["bson-3"] }
 nanoid = "0.4.0"
