@@ -1,11 +1,13 @@
-use axum::{ Extension, Json, extract::State, http::StatusCode };
+use axum::{ Extension, Json, extract::State, http::StatusCode, response::AppendHeaders };
+use mongodb::bson;
+use nanoid::nanoid;
 use serde::Deserialize;
 
 use crate::{
     base::{ self, response::ResponseModel },
+    cache::token::TokenQuery,
     middlewares::auth::{ AuthorizationInfo, AuthorizationStatus },
     routes::user::UserRoutesState,
-    utils,
 };
 
 #[derive(Deserialize)]
@@ -27,15 +29,20 @@ pub async fn handler(
     }
 
     return match state.app.store.users.verify(payload.verify_code).await {
-        Ok(Some(id)) => {
+        Ok(Some(user_id)) => {
             match
-                utils::session::create(
-                    &mut state.app.cache.refresh.clone(),
-                    &state.app.jwt,
-                    id
-                ).await
+                state.app.cache.token.clone().add(TokenQuery {
+                    user_id,
+                    created_at: bson::DateTime::now().timestamp_millis(),
+                    secret: nanoid!(32),
+                }).await
             {
-                Ok(headers) => base::response::success(StatusCode::OK, Some(headers)),
+                Ok(header) => {
+                    return base::response::success(
+                        StatusCode::OK,
+                        Some(AppendHeaders(vec![header]))
+                    );
+                }
                 Err(_) => base::response::internal_error(None),
             }
         }

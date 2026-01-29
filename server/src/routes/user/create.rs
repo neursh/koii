@@ -81,7 +81,6 @@ pub async fn handler(
         verify_requested: Some(bson::DateTime::now()),
         verify_code: Some(verify_code.clone()),
         created_at: None,
-        accept_refresh_after: None,
     };
 
     match state.app.store.users.add(user).await {

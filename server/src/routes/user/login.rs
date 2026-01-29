@@ -1,13 +1,14 @@
-use axum::{ Extension, Json, extract::State, http::StatusCode };
+use axum::{ Extension, Json, extract::State, http::StatusCode, response::AppendHeaders };
 use mongodb::bson;
+use nanoid::nanoid;
 use serde::Deserialize;
 use validator::Validate;
 
 use crate::{
     base::{ self, response::ResponseModel },
+    cache::token::TokenQuery,
     middlewares::auth::{ AuthorizationInfo, AuthorizationStatus },
     routes::user::UserRoutesState,
-    utils,
     workers::verify_pass::VerifyPassRequest,
 };
 
@@ -70,14 +71,17 @@ pub async fn handler(
     {
         Ok(Some(true)) => {
             match
-                utils::session::create(
-                    &mut state.app.cache.refresh.clone(),
-                    &state.app.jwt,
-                    user.id
-                ).await
+                state.app.cache.token.clone().add(TokenQuery {
+                    user_id: user.id,
+                    created_at: bson::DateTime::now().timestamp_millis(),
+                    secret: nanoid!(32),
+                }).await
             {
-                Ok(headers) => {
-                    return base::response::success(StatusCode::OK, Some(headers));
+                Ok(header) => {
+                    return base::response::success(
+                        StatusCode::OK,
+                        Some(AppendHeaders(vec![header]))
+                    );
                 }
                 Err(error) => {
                     tracing::error!(target: "user.login", "{}\n{}", payload.email, error);

@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use mongodb::{ IndexModel, bson::{ self, DateTime, Document }, options::{ IndexOptions } };
+use mongodb::{ IndexModel, bson::{ self, DateTime, Document }, options::IndexOptions };
 use serde::{ Deserialize, Serialize };
 
 use crate::consts::EMAIL_VERIFY_EXPIRE;
@@ -13,7 +13,7 @@ pub struct UserDocument {
     /// User's password hash using argon2id.
     pub password_hash: String,
 
-    /// The assigned unique ID to that user.
+    /// Unique ID to the user.
     #[serde(rename = "_id")]
     pub id: String,
 
@@ -29,13 +29,6 @@ pub struct UserDocument {
     /// The time when user verified the account, locking in as the creation time.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub created_at: Option<bson::DateTime>,
-
-    /// Invalidate any refresh tokens before this date.
-    ///
-    /// This value should only be changed when an account-wide logout is issued.
-    /// For example: Password reset, lockdown mode. Things that would require extra verification.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub accept_refresh_after: Option<bson::DateTime>,
 }
 
 pub struct UsersStore {
@@ -86,7 +79,6 @@ impl UsersStore {
                 bson::doc! {
                 "$set": {
                     "created_at": DateTime::now(),
-                    "accept_refresh_after": DateTime::now(),
                 },
                 "$unset": {
                     "verify_requested": "",
@@ -107,30 +99,6 @@ impl UsersStore {
         query: Document
     ) -> Result<Option<UserDocument>, mongodb::error::Error> {
         self.endpoint.find_one(query).await
-    }
-
-    pub async fn update_accept_refresh(&self, id: String) -> Result<bool, mongodb::error::Error> {
-        Ok(
-            self.endpoint.update_one(
-                bson::doc! { "_id": id },
-                bson::doc! { "accept_refresh_after": DateTime::now() }
-            ).await?.modified_count == 1
-        )
-    }
-
-    pub async fn check_accept_refresh(
-        &self,
-        id: &str,
-        checking: DateTime
-    ) -> Result<bool, mongodb::error::Error> {
-        if
-            let Some(record) = self.get_one(bson::doc! { "_id": id }).await? &&
-            let Some(checker) = record.accept_refresh_after
-        {
-            return Ok(checking.timestamp_millis() >= checker.timestamp_millis());
-        }
-
-        Ok(false)
     }
 
     pub async fn delete(&self, id: &str) -> Result<bool, mongodb::error::Error> {

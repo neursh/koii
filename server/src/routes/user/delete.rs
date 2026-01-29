@@ -1,7 +1,7 @@
 use axum::{
     Extension,
     extract::State,
-    http::{ HeaderName, StatusCode, header::SET_COOKIE },
+    http::{ StatusCode, header::SET_COOKIE },
     response::AppendHeaders,
 };
 
@@ -29,26 +29,33 @@ pub async fn handler(
         }
     };
 
-    return match state.app.store.users.delete(&token.id).await {
-        Ok(_) => { base::response::success(StatusCode::OK, Some(clear_tokens_header())) }
+    // Safely remove the user first, if fail, don't remove token.
+    match state.app.store.users.delete(&token.user_id).await {
+        Ok(_) => {}
         Err(error) => {
-            tracing::error!(target: "endpoint.delete", "{}\n{}", token.id, error);
+            tracing::error!(target: "endpoint.delete.profile", "{}\n{}", token.user_id, error);
+            return base::response::internal_error(None);
+        }
+    }
+
+    // User now gone, delete token in cache.
+    return match state.app.cache.token.clone().delete_all(&token.user_id).await {
+        Ok(_) => {
+            base::response::success(
+                StatusCode::OK,
+                Some(
+                    AppendHeaders(
+                        vec![(
+                            SET_COOKIE,
+                            "token=; HttpOnly; SameSite=Lax; Secure; Path=/; Domain=.koii.space; Max-Age=0".to_string(),
+                        )]
+                    )
+                )
+            )
+        }
+        Err(error) => {
+            tracing::error!(target: "endpoint.delete.token", "{}\n{}", token.user_id, error);
             base::response::internal_error(None)
         }
     };
-}
-
-fn clear_tokens_header() -> AppendHeaders<Vec<(HeaderName, String)>> {
-    AppendHeaders(
-        vec![
-            (
-                SET_COOKIE,
-                "token=; HttpOnly; SameSite=Lax; Secure; Path=/; Domain=.koii.space; Max-Age=0".to_string(),
-            ),
-            (
-                SET_COOKIE,
-                "refresh=; HttpOnly; SameSite=Lax; Secure; Path=/; Domain=.koii.space; Max-Age=0".to_string(),
-            )
-        ]
-    )
 }
