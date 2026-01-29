@@ -1,9 +1,9 @@
-pub mod refresh;
+pub mod token;
 
-use crate::cache::refresh::RefreshCache;
+use crate::cache::token::TokenCache;
 
 pub struct Cache {
-    pub refresh: RefreshCache,
+    pub token: TokenCache,
 }
 
 pub async fn initialize() -> Result<Cache, redis::RedisError> {
@@ -12,6 +12,6 @@ pub async fn initialize() -> Result<Cache, redis::RedisError> {
     let redis_client = redis::Client::open(redis_host)?.get_multiplexed_async_connection().await?;
 
     Ok(Cache {
-        refresh: RefreshCache { endpoint: redis_client.clone() },
+        token: TokenCache { endpoint: redis_client.clone() },
     })
 }

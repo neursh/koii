@@ -12,7 +12,7 @@ use crate::{
     cache::Cache,
     middlewares::auth,
     store::Store,
-    utils::{ jwt::Jwt, turnstile::Turnstile },
+    utils::turnstile::Turnstile,
     workers::{ WorkerSpec, Workers, WorkersAllocate },
 };
 
@@ -29,7 +29,6 @@ pub struct AppState {
     pub worker: Workers,
     pub store: Store,
     pub cache: Cache,
-    pub jwt: Jwt,
     pub turnstile: Turnstile,
 }
 
@@ -58,7 +57,6 @@ async fn main() {
         }),
         store: store::initialize().await.unwrap(),
         cache: cache::initialize().await.unwrap(),
-        jwt: utils::jwt::Jwt::new(),
         turnstile: Turnstile::default(),
     });
 
@@ -84,6 +82,10 @@ async fn main() {
     tracing::info!(target: "serverproc", "Hello, world (world here is {})! :3", host);
 
     let mode: Vec<String> = args().collect();
+    if mode.len() != 2 {
+        tracing::info!(target: "serverproc", "No required arguments provided.");
+    }
+
     match mode[1].as_str() {
         "online" => {
             tracing::info!(target: "serverproc", "Serving in online mode...");
