@@ -34,6 +34,7 @@ impl TokenCache {
         ))
     }
 
+    /// Check and verify the token with its cache and age, kill if necessary.
     pub async fn authorize(&mut self, query: &TokenQuery) -> Result<bool, redis::RedisError> {
         let key = format!("token:<{}>", query.user_id);
         let member = format!("{}.{}", query.created_at, query.secret);

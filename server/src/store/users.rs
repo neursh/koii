@@ -50,7 +50,7 @@ impl UsersStore {
                 .keys(bson::doc! { "verify_requested": 1 })
                 .options(
                     IndexOptions::builder()
-                        .expire_after(Duration::from_secs(EMAIL_VERIFY_EXPIRE as u64))
+                        .expire_after(Duration::from_secs(EMAIL_VERIFY_EXPIRE))
                         .build()
                 )
                 .build()
