@@ -83,7 +83,8 @@ async fn main() {
 
     let mode: Vec<String> = args().collect();
     if mode.len() != 2 {
-        tracing::info!(target: "serverproc", "No required arguments provided.");
+        tracing::error!(target: "serverproc", "No required arguments provided.");
+        return;
     }
 
     match mode[1].as_str() {

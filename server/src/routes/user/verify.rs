@@ -1,11 +1,8 @@
-use axum::{ Extension, Json, extract::State, http::StatusCode, response::AppendHeaders };
-use mongodb::bson;
-use nanoid::nanoid;
+use axum::{ Extension, Json, extract::State, http::StatusCode };
 use serde::Deserialize;
 
 use crate::{
     base::{ self, response::ResponseModel },
-    cache::token::TokenQuery,
     middlewares::auth::{ AuthorizationInfo, AuthorizationStatus },
     routes::user::UserRoutesState,
 };
@@ -29,24 +26,8 @@ pub async fn handler(
     }
 
     return match state.app.store.users.verify(payload.verify_code).await {
-        Ok(Some(user_id)) => {
-            match
-                state.app.cache.token.clone().add(TokenQuery {
-                    user_id,
-                    created_at: bson::DateTime::now().timestamp_millis(),
-                    secret: nanoid!(32),
-                }).await
-            {
-                Ok(header) => {
-                    return base::response::success(
-                        StatusCode::OK,
-                        Some(AppendHeaders(vec![header]))
-                    );
-                }
-                Err(_) => base::response::internal_error(None),
-            }
-        }
-        Ok(None) => {
+        Ok(true) => { base::response::success(StatusCode::OK, None) }
+        Ok(false) => {
             base::response::error(
                 StatusCode::NOT_FOUND,
                 "There's no account associated to this verify token.",

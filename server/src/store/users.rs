@@ -67,13 +67,8 @@ impl UsersStore {
     }
 
     /// Verify user from the token sent via email.
-    ///
-    /// When user found and updated, `_id` will be returned, allowing verify to create a jwt.
-    pub async fn verify(
-        &self,
-        verify_code: String
-    ) -> Result<Option<String>, mongodb::error::Error> {
-        if let Some(target) = self.get_one(bson::doc! { "verify_code": &verify_code }).await? {
+    pub async fn verify(&self, verify_code: String) -> Result<bool, mongodb::error::Error> {
+        if self.get_one(bson::doc! { "verify_code": &verify_code }).await?.is_some() {
             let result = self.endpoint.update_one(
                 bson::doc! { "verify_code": &verify_code },
                 bson::doc! {
@@ -87,11 +82,11 @@ impl UsersStore {
             }
             ).await?;
             if result.modified_count == 1 {
-                return Ok(Some(target.id));
+                return Ok(true);
             }
         }
 
-        Ok(None)
+        Ok(false)
     }
 
     pub async fn get_one(
