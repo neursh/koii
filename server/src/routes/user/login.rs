@@ -1,12 +1,10 @@
 use axum::{ Extension, Json, extract::State, http::StatusCode, response::AppendHeaders };
 use mongodb::bson;
-use nanoid::nanoid;
 use serde::Deserialize;
 use validator::Validate;
 
 use crate::{
     base::{ self, response::ResponseModel },
-    cache::token::TokenQuery,
     middlewares::auth::{ AuthorizationInfo, AuthorizationStatus },
     routes::user::UserRoutesState,
     workers::verify_pass::VerifyPassRequest,
@@ -70,13 +68,7 @@ pub async fn handler(
         }).await
     {
         Ok(Some(true)) => {
-            match
-                state.app.cache.token.clone().add(TokenQuery {
-                    user_id: user.id,
-                    created_at: bson::DateTime::now().timestamp_millis(),
-                    secret: nanoid!(32),
-                }).await
-            {
+            match state.app.cache.token.clone().create(&user.id).await {
                 Ok(header) => {
                     return base::response::success(
                         StatusCode::OK,

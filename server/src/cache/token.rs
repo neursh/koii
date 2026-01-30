@@ -1,5 +1,6 @@
 use axum::http::HeaderName;
 use mongodb::bson;
+use nanoid::nanoid;
 use redis::{ AsyncCommands, aio::MultiplexedConnection };
 use reqwest::header::SET_COOKIE;
 
@@ -20,17 +21,14 @@ pub struct TokenCache {
 
 impl TokenCache {
     /// Add a valid token to a user, returning a `SET_COOKIE` header.
-    pub async fn add(
-        &mut self,
-        query: TokenQuery
-    ) -> Result<(HeaderName, String), redis::RedisError> {
-        let key = format!("token:<{}>", query.user_id);
-        let member = format!("{}.{}", query.created_at, query.secret);
+    pub async fn create(&mut self, user_id: &str) -> Result<(HeaderName, String), redis::RedisError> {
+        let key = format!("token:<{}>", user_id);
+        let member = format!("{}.{}", bson::DateTime::now().timestamp_millis(), nanoid!(64));
         self.endpoint.sadd::<&str, &str, usize>(&key, &member).await?;
 
         Ok((
             SET_COOKIE,
-            cookies::consturct("token", format!("{}.{}", query.user_id, member), TOKEN_MAX_AGE),
+            cookies::consturct("token", format!("{}.{}", user_id, member), TOKEN_MAX_AGE),
         ))
     }
 
