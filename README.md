@@ -36,7 +36,10 @@ For authenticated users, there will be rate limits too, though it won't have muc
 
 ## Development status
 - [x] Email service & database.
-- [x] Basic user operations. (create, verify, login, refresh, logout, delete)
-- [ ] Advanced user operations. (forget/edit password, edit info, 2FA)
+- [x] Basic user operations. (create, verify, login, logout, delete)
+- [ ] Advanced user operations:
+  - [ ] 2FA.
+  - [ ] Forget/edit password.
+  - [ ] Change email.
 - [ ] OAuth2.
 - [ ] Ability to create account with: Gitlab, Github, Google, Microsoft, Apple. (so many Gs)
