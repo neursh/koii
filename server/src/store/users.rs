@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use mongodb::{ IndexModel, bson::{ self, DateTime, Document }, options::IndexOptions };
 use serde::{ Deserialize, Serialize };
 
@@ -48,11 +46,7 @@ impl UsersStore {
         endpoint.create_index(
             IndexModel::builder()
                 .keys(bson::doc! { "verify_requested": 1 })
-                .options(
-                    IndexOptions::builder()
-                        .expire_after(Duration::from_secs(EMAIL_VERIFY_EXPIRE))
-                        .build()
-                )
+                .options(IndexOptions::builder().expire_after(EMAIL_VERIFY_EXPIRE).build())
                 .build()
         ).await?;
 

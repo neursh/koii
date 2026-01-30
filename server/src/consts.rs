@@ -1,4 +1,6 @@
-/// 15 days. (in miliseconds)
-pub const TOKEN_MAX_AGE: i64 = 1296000000;
-/// 10 minutes. (in seconds)
-pub const EMAIL_VERIFY_EXPIRE: u64 = 600;
+use std::time::Duration;
+
+/// 15 days.
+pub const TOKEN_MAX_AGE: Duration = Duration::from_hours(15 * 24);
+/// 10 minutes.
+pub const EMAIL_VERIFY_EXPIRE: Duration = Duration::from_mins(10);

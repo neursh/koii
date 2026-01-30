@@ -21,7 +21,10 @@ pub struct TokenCache {
 
 impl TokenCache {
     /// Add a valid token to a user, returning a `SET_COOKIE` header.
-    pub async fn create(&mut self, user_id: &str) -> Result<(HeaderName, String), redis::RedisError> {
+    pub async fn create(
+        &mut self,
+        user_id: &str
+    ) -> Result<(HeaderName, String), redis::RedisError> {
         let key = format!("token:<{}>", user_id);
         let member = format!("{}.{}", bson::DateTime::now().timestamp_millis(), nanoid!(64));
         self.endpoint.sadd::<&str, &str, usize>(&key, &member).await?;
@@ -39,7 +42,8 @@ impl TokenCache {
 
         if self.endpoint.sismember::<&str, &str, bool>(&key, &member).await? {
             let alive =
-                bson::DateTime::now().timestamp_millis() - query.created_at <= TOKEN_MAX_AGE;
+                bson::DateTime::now().timestamp_millis() - query.created_at <=
+                (TOKEN_MAX_AGE.as_millis() as i64);
             if !alive {
                 self.endpoint.srem::<&str, &str, usize>(&key, &member).await?;
             }
