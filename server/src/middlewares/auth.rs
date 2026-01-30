@@ -7,6 +7,7 @@ use axum::{
     response::IntoResponse,
 };
 use cookie_rs::Cookie;
+use reqwest::header::COOKIE;
 
 use crate::{ AppState, cache::token::TokenQuery };
 
@@ -28,10 +29,8 @@ pub async fn authorize(
     mut request: Request,
     next: Next
 ) -> impl IntoResponse {
-    let raw_cookies = headers.get("cookie");
-
-    if let Some(value) = raw_cookies && let Ok(value_str) = value.to_str() {
-        request.extensions_mut().insert(parse_cookies(state, value_str).await);
+    if let Some(cookies) = headers.get(COOKIE) && let Ok(cookies) = cookies.to_str() {
+        request.extensions_mut().insert(parse_cookies(state, cookies).await);
     } else {
         request.extensions_mut().insert(AuthorizationInfo {
             token: None,
@@ -42,13 +41,12 @@ pub async fn authorize(
     next.run(request).await
 }
 
-async fn parse_cookies(state: Arc<AppState>, cookies_str: &str) -> AuthorizationInfo {
+async fn parse_cookies(state: Arc<AppState>, cookies: &str) -> AuthorizationInfo {
     let mut token = None;
 
-    for cookie in cookies_str.split("; ") {
+    for cookie in cookies.split("; ") {
         if let Ok(payload) = Cookie::parse(cookie) && payload.name() == "token" {
-            let raw_token: Vec<&str> = payload.value().split(".").collect();
-            token = parse_token(raw_token);
+            token = parse_token(payload.value());
             break;
         }
     }
@@ -76,7 +74,9 @@ async fn parse_cookies(state: Arc<AppState>, cookies_str: &str) -> Authorization
     };
 }
 
-fn parse_token(raw_token: Vec<&str>) -> Option<TokenQuery> {
+fn parse_token(raw_token: &str) -> Option<TokenQuery> {
+    let raw_token: Vec<&str> = raw_token.split(".").collect();
+
     let created_at = match raw_token.get(1)?.to_owned().parse::<i64>() {
         Ok(created_at) => created_at,
         Err(_) => {
