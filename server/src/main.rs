@@ -102,7 +102,7 @@ async fn main() {
         }
         "offline" => {
             tracing::info!(target: "serverproc", "Serving in offline mode...");
-            tracing::warn!(target: "serverproc", "Offline mode is for local development only, please do not fuck this up, plwease QwQ");
+            tracing::warn!(target: "serverproc", "Offline mode is for local development only, do not fuck this up, plwease QwQ");
             axum_server::bind(host.parse().unwrap()).serve(app.into_make_service()).await.unwrap();
         }
         _ => tracing::info!(target: "serverproc", "No mode chosen, shutting down..."),
