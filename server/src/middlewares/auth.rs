@@ -9,8 +9,6 @@ use axum::{
 use cookie_rs::Cookie;
 use reqwest::header::COOKIE;
 
-use crate::{ AppState, cache::token::TokenQuery };
-
 #[derive(Clone)]
 pub enum AuthorizationStatus {
     Authorized,
@@ -53,7 +51,7 @@ async fn parse_cookies(state: Arc<AppState>, cookies: &str) -> AuthorizationInfo
 
     return match token {
         Some(token) => {
-            match state.cache.token.clone().authorize(&token).await {
+            match state.db.user.cache.token.clone().authorize(&token).await {
                 Ok(true) =>
                     AuthorizationInfo {
                         token: Some(token),

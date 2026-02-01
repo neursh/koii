@@ -5,9 +5,9 @@ use validator::Validate;
 
 use crate::{
     base::{ self, response::ResponseModel },
+    database::user::store::entry::UserDocument,
     middlewares::auth::{ AuthorizationInfo, AuthorizationStatus },
     routes::user::UserRoutesState,
-    store::users::UserDocument,
     workers::verify_email::VerifyEmailRequest,
 };
 use nanoid::nanoid;
@@ -78,21 +78,23 @@ pub async fn handler(
         id: user_id.clone(),
         email: payload.email.clone(),
         password_hash,
+        totp: None,
+        token_valid_after: bson::DateTime::now(),
         verify_requested: Some(bson::DateTime::now()),
         verify_code: Some(verify_code.clone()),
         created_at: None,
     };
 
-    match state.app.store.users.add(user).await {
+    match state.app.db.user.store.entry.add(&user).await {
         Ok(_) => {}
         Err(error) => {
             match *error.kind {
                 mongodb::error::ErrorKind::Write(WriteFailure::WriteError(ref write_error)) if
                     write_error.code == 11000
                 => {
-                    return base::response::result(
-                        StatusCode::CREATED,
-                        "Check your inbox to verify your email!".into(),
+                    return base::response::error(
+                        StatusCode::CONFLICT,
+                        "Email already registered.",
                         None
                     );
                 }
