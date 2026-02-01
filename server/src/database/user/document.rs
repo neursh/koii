@@ -35,23 +35,23 @@ pub struct UserDocument {
 
 #[async_trait]
 impl UserDocumentOperations for UserDatabase {
-    async fn add(&self, document: &UserDocument) -> Result<(), mongodb::error::Error> {
+    async fn add_user(&self, document: &UserDocument) -> Result<(), mongodb::error::Error> {
         self.document.insert_one(document).await?;
         Ok(())
     }
 
-    async fn get(
+    async fn get_user(
         &self,
         filter: bson::Document
     ) -> Result<Option<UserDocument>, mongodb::error::Error> {
         self.document.find_one(filter).await
     }
 
-    async fn exists(&self, filter: bson::Document) -> Result<bool, mongodb::error::Error> {
-        Ok(self.get(filter).await?.is_some())
+    async fn user_exists(&self, filter: bson::Document) -> Result<bool, mongodb::error::Error> {
+        Ok(self.get_user(filter).await?.is_some())
     }
 
-    async fn verify(&self, verify_code: String) -> Result<bool, mongodb::error::Error> {
+    async fn verify_user(&self, verify_code: String) -> Result<bool, mongodb::error::Error> {
         let result = self.document.update_one(
             bson::doc! { "verify_code": &verify_code },
             bson::doc! {

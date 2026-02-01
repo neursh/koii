@@ -13,20 +13,26 @@ pub struct UserDatabase {
 
 #[async_trait]
 pub trait UserDocumentOperations {
-    /// Add user.
-    async fn add(&self, document: &UserDocument) -> Result<(), mongodb::error::Error>;
+    async fn add_user(&self, document: &UserDocument) -> Result<(), mongodb::error::Error>;
 
-    /// Get user.
-    async fn get(
+    async fn get_user(
         &self,
         filter: bson::Document
     ) -> Result<Option<UserDocument>, mongodb::error::Error>;
 
-    /// Check if user exists.
-    async fn exists(&self, filter: bson::Document) -> Result<bool, mongodb::error::Error>;
+    async fn user_exists(&self, filter: bson::Document) -> Result<bool, mongodb::error::Error>;
 
     /// Verify user from the token sent via email.
-    async fn verify(&self, verify_code: String) -> Result<bool, mongodb::error::Error>;
+    async fn verify_user(&self, verify_code: String) -> Result<bool, mongodb::error::Error>;
+}
+
+#[async_trait]
+pub trait UserTokenOperations {
+    async fn add_token(&self, user_id: String) -> Result<(), redis::RedisError>;
+
+    async fn authorize(&self, token: String) -> Result<(), redis::RedisError>;
+
+    async fn revoke(&self, token: String) -> Result<(), redis::RedisError>;
 }
 
 #[async_trait]
