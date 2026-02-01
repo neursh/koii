@@ -36,7 +36,7 @@ pub async fn handler(
         }
     };
 
-    let mut token_cache = state.app.cache.token.clone();
+    let mut token_cache = state.app.db.user.cache.token.clone();
     match options.all {
         Some(true) => {
             match token_cache.delete_all(&token.user_id).await {

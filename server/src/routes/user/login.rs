@@ -45,7 +45,7 @@ pub async fn handler(
         }
     }
 
-    let edge_user = state.app.store.users.get_one(
+    let edge_user = state.app.db.user.store.entry.get_one(
         bson::doc! {
             "email": &payload.email
         }
@@ -68,7 +68,7 @@ pub async fn handler(
         }).await
     {
         Ok(Some(true)) => {
-            match state.app.cache.token.clone().create(&user.id).await {
+            match state.app.db.user.cache.token.clone().create(&user.id).await {
                 Ok(header) => {
                     return base::response::success(
                         StatusCode::OK,
