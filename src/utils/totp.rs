@@ -9,6 +9,7 @@ use thiserror::Error;
 pub struct Totp {
     pub secret: Binary,
     pub url: String,
+    pub name: String,
 }
 
 #[derive(Error, Debug)]
@@ -19,7 +20,7 @@ pub enum TotpError {
 }
 
 impl Totp {
-    pub fn new(user_id: String) -> Result<Self, TotpError> {
+    pub fn new(name: String) -> Result<Self, TotpError> {
         let secret = nanoid::rngs::default(128);
 
         let totp = TOTP::new(
@@ -29,7 +30,7 @@ impl Totp {
             30,
             secret,
             Some("Koii".to_string()),
-            user_id
+            name.clone()
         )?;
 
         Ok(Totp {
@@ -38,10 +39,11 @@ impl Totp {
                 bytes: nanoid::rngs::default(128),
             },
             url: totp.get_url(),
+            name,
         })
     }
 
-    pub fn verify(&self, token: &str, email: String) -> Result<bool, TotpError> {
+    pub fn verify(&self, code: &str) -> Result<bool, TotpError> {
         let totp = TOTP::new(
             totp_rs::Algorithm::SHA1,
             6,
@@ -49,9 +51,9 @@ impl Totp {
             30,
             self.secret.clone().bytes,
             Some("Koii".to_string()),
-            email
+            self.name.clone()
         )?;
 
-        Ok(totp.check_current(token)?)
+        Ok(totp.check_current(code)?)
     }
 }
