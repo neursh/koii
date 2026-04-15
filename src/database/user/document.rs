@@ -124,8 +124,7 @@ impl DocumentOperations {
             bson::doc! { "verify_code": verify_code },
             bson::doc! {
                 "$set": {
-                    "created_at": bson::DateTime::now(),
-                    "reject_tokens_before": bson::DateTime::now()
+                    "created_at": bson::DateTime::now()
                 },
                 "$unset": {
                     "verify_requested": "",
