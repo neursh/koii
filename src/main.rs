@@ -88,13 +88,13 @@ async fn main() {
 
     let mode: Vec<String> = args().collect();
     if mode.len() != 2 {
-        tracing::error!("No required arguments provided. [online/offline]");
+        tracing::error!("No required arguments provided. [secure/insecure]");
         return;
     }
 
     match mode[1].as_str() {
-        "online" => {
-            tracing::info!("Serving in online mode...");
+        "secure" => {
+            tracing::info!("Serving in secure context...");
             rustls::crypto::ring::default_provider().install_default().unwrap();
             let tls_config = RustlsConfig::from_pem_file(
                 "cf-ocert.pem",
@@ -105,13 +105,13 @@ async fn main() {
                 .serve(app.into_make_service()).await
                 .unwrap();
         }
-        "offline" => {
-            tracing::info!("Serving in offline mode...");
-            tracing::warn!(
-                "Offline mode is for local development only, do not fuck this up, plwease QwQ"
+        "insecure" => {
+            tracing::info!("Serving in insecure context...");
+            tracing::error!(
+                "Insecure context is for local development only, do not fuck this up, plwease QwQ"
             );
             axum_server::bind(host).serve(app.into_make_service()).await.unwrap();
         }
-        _ => tracing::info!("No mode chosen, shutting down..."),
+        _ => tracing::error!("No context chosen, shutting down... [secure/insecure]"),
     }
 }
