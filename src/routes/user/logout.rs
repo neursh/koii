@@ -23,7 +23,7 @@ pub async fn handler(
     Query(options): Query<LogoutOptions>
 ) -> ResponseModel {
     match authorization_info.status {
-        AuthorizationStatus::Authorized => {}
+        AuthorizationStatus::Authorized => {} // Authorized, passing down.
         _ => {
             return base::response::error(StatusCode::UNAUTHORIZED, "Get out.", None);
         }
@@ -40,7 +40,7 @@ pub async fn handler(
     match options.all {
         Some(true) => {
             match token_cache.revoke_all(&token.user_id).await {
-                Ok(_) => {}
+                Ok(_) => {} // Revoked, passing down.
                 Err(_) => {
                     return base::response::internal_error(None);
                 }
@@ -48,7 +48,7 @@ pub async fn handler(
         }
         _ => {
             match token_cache.revoke(&token).await {
-                Ok(_) => {}
+                Ok(_) => {} // Revoked, passing down.
                 Err(_) => {
                     return base::response::internal_error(None);
                 }

@@ -16,7 +16,7 @@ pub async fn handler(
     State(state): State<UserRoutesState>
 ) -> ResponseModel {
     match authorization_info.status {
-        AuthorizationStatus::Authorized => (),
+        AuthorizationStatus::Authorized => {} // Authorized, passing down.
         _ => {
             return base::response::error(StatusCode::UNAUTHORIZED, "Get out.", None);
         }
@@ -31,7 +31,7 @@ pub async fn handler(
 
     // Safely remove the user first, if fail, don't remove token.
     match state.app.db.user.document.mark_deletion(&token.user_id).await {
-        Ok(_) => {}
+        Ok(_) => {} // Account marked deletion, passing down.
         Err(error) => {
             tracing::error!("{}\n{}", token.user_id, error);
             return base::response::internal_error(None);

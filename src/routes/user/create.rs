@@ -36,7 +36,7 @@ pub async fn handler(
     }
 
     match payload.validate() {
-        Ok(_) => {}
+        Ok(_) => {} // Valid payload, passing down.
         Err(field) => {
             if let Some(field) = field.errors().iter().next() {
                 return base::response::error(
@@ -50,7 +50,7 @@ pub async fn handler(
     }
 
     match state.app.turnstile.verify(payload.clientstile).await {
-        Ok(true) => {}
+        Ok(true) => {} // Turnstile verified, passing down.
         Ok(false) => {
             return base::response::error(
                 StatusCode::BAD_REQUEST,
@@ -86,7 +86,7 @@ pub async fn handler(
     };
 
     match state.app.db.user.document.add(&user).await {
-        Ok(_) => {}
+        Ok(_) => {} // User added, passing down.
         Err(error) => {
             match *error.kind {
                 mongodb::error::ErrorKind::Write(WriteFailure::WriteError(ref write_error)) if
@@ -112,9 +112,12 @@ pub async fn handler(
             verify_code,
         }).await
     {
-        Ok(_) => {}
+        Ok(_) => {} // Send email successful, passing down.
         Err(_) => {
-            tracing::error!("Email worker failed to deliver the verification link for {}.", user_id);
+            tracing::error!(
+                "Email worker failed to deliver the verification link for {}.",
+                user_id
+            );
             return base::response::internal_error(None);
         }
     }
