@@ -24,6 +24,8 @@ pub struct LoginPayload {
     pub email: String,
     #[validate(length(min = 12))]
     pub password: String,
+    #[validate(length(equal = 5))]
+    pub totp_code: Option<String>,
 }
 
 pub async fn handler(
@@ -40,7 +42,7 @@ pub async fn handler(
     }
 
     match payload.validate() {
-        Ok(_) => {}
+        Ok(_) => {} // Valid payload, passing down.
         Err(field) => {
             if let Some(field) = field.errors().iter().next() {
                 return base::response::error(
@@ -77,7 +79,7 @@ pub async fn handler(
     {
         Ok(Some(true)) => {
             match user.deleted {
-                None => {}
+                None => {} // User not marked for deletion, passing down.
                 Some(_) => {
                     return base::response::error(
                         StatusCode::FORBIDDEN,
@@ -93,6 +95,32 @@ pub async fn handler(
         _ => {
             tracing::error!("Verify password worker failure.");
             return base::response::internal_error(None);
+        }
+    }
+
+    match user.totp {
+        None => {} // No 2FA setup detected, passing down.
+        Some(totp) => {
+            match payload.totp_code {
+                Some(totp_code) => {
+                    match totp.verify(&totp_code) {
+                        Ok(true) => {} // Correct token, passing down.
+                        Ok(false) => {
+                            return base::response::error(
+                                StatusCode::UNAUTHORIZED,
+                                "The TOTP code provided was wrong.",
+                                None
+                            );
+                        }
+                        Err(_) => {
+                            return base::response::internal_error(None);
+                        }
+                    }
+                }
+                None => {
+                    return base::response::result(StatusCode::ACCEPTED, "TOTP".into(), None);
+                }
+            }
         }
     }
 
