@@ -1,7 +1,6 @@
 use std::time::{ Duration, SystemTime };
 
 use axum::{ extract::{ Request, State }, middleware::Next, response::IntoResponse };
-use tracing::warn;
 
 pub async fn padding(
     State(pad): State<Duration>,
@@ -16,7 +15,7 @@ pub async fn padding(
             if finish < pad {
                 tokio::time::sleep(pad - finish).await;
             } else {
-                warn!("Time spent was too much for raising: {}ms", finish.as_millis());
+                tracing::warn!("Time spent was too much for raising: {}ms", finish.as_millis());
             }
         }
         Err(_) => {}
