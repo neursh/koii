@@ -36,10 +36,10 @@ pub async fn handler(
         }
     };
 
-    let mut token_cache = state.app.db.user.cache.token.clone();
+    let mut token_cache = state.app.db.user.token.clone();
     match options.all {
         Some(true) => {
-            match token_cache.delete_all(&token.user_id).await {
+            match token_cache.revoke_all(&token.user_id).await {
                 Ok(_) => {}
                 Err(_) => {
                     return base::response::internal_error(None);
@@ -47,7 +47,7 @@ pub async fn handler(
             }
         }
         _ => {
-            match token_cache.delete_one(&token).await {
+            match token_cache.revoke(&token).await {
                 Ok(_) => {}
                 Err(_) => {
                     return base::response::internal_error(None);

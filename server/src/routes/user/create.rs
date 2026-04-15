@@ -5,7 +5,7 @@ use validator::Validate;
 
 use crate::{
     base::{ self, response::ResponseModel },
-    database::user::store::entry::UserDocument,
+    database::user::user::UserDocument,
     middlewares::auth::{ AuthorizationInfo, AuthorizationStatus },
     routes::user::UserRoutesState,
     workers::verify_email::VerifyEmailRequest,
@@ -75,17 +75,17 @@ pub async fn handler(
     };
 
     let user = UserDocument {
-        id: user_id.clone(),
+        user_id: user_id.clone(),
         email: payload.email.clone(),
         password_hash,
         totp: None,
-        token_valid_after: bson::DateTime::now(),
         verify_requested: Some(bson::DateTime::now()),
         verify_code: Some(verify_code.clone()),
         created_at: None,
+        deleted: None,
     };
 
-    match state.app.db.user.store.entry.add(&user).await {
+    match state.app.db.user.document.add(&user).await {
         Ok(_) => {}
         Err(error) => {
             match *error.kind {

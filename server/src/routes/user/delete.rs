@@ -30,7 +30,7 @@ pub async fn handler(
     };
 
     // Safely remove the user first, if fail, don't remove token.
-    match state.app.db.user.store.entry.delete(&token.user_id).await {
+    match state.app.db.user.document.mark_deletion(&token.user_id).await {
         Ok(_) => {}
         Err(error) => {
             tracing::error!(target: "endpoint.delete.profile", "{}\n{}", token.user_id, error);
@@ -38,8 +38,8 @@ pub async fn handler(
         }
     }
 
-    // User now gone, delete token in cache.
-    return match state.app.db.user.cache.token.clone().delete_all(&token.user_id).await {
+    // User now gone, delete tokens in cache.
+    return match state.app.db.user.token.clone().revoke_all(&token.user_id).await {
         Ok(_) => {
             base::response::success(
                 StatusCode::OK,

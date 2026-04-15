@@ -1,4 +1,4 @@
-use axum::{ Extension, Json, extract::State, http::StatusCode, response::AppendHeaders };
+use axum::{ Extension, Json, extract::State, http::StatusCode };
 use mongodb::bson;
 use serde::Deserialize;
 use validator::Validate;
@@ -45,7 +45,7 @@ pub async fn handler(
         }
     }
 
-    let edge_user = state.app.db.user.store.entry.get_one(
+    let edge_user = state.app.db.user.document.get(
         bson::doc! {
             "email": &payload.email
         }
@@ -68,12 +68,9 @@ pub async fn handler(
         }).await
     {
         Ok(Some(true)) => {
-            match state.app.db.user.cache.token.clone().create(&user.id).await {
+            match state.app.db.user.token.clone().create(&state.app.jwt, user.user_id).await {
                 Ok(header) => {
-                    return base::response::success(
-                        StatusCode::OK,
-                        Some(AppendHeaders(vec![header]))
-                    );
+                    return base::response::success(StatusCode::OK, Some(header));
                 }
                 Err(error) => {
                     tracing::error!(target: "user.login", "{}\n{}", payload.email, error);
