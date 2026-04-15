@@ -4,16 +4,17 @@ use jsonwebtoken::{ Algorithm, DecodingKey, EncodingKey, Header, Validation };
 use serde::{ Deserialize, Serialize };
 
 #[derive(Clone, Serialize, Deserialize)]
-pub enum TokenUsage {
-    Authorize,
-    Refresh,
+pub enum TokenKind {
+    AUTHENTICATION,
+    REFRESH,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct TokenClaims {
-    pub usage: TokenUsage,
-    pub id: String,
-    pub exp: i64,
+    pub identifier: String,
+    pub kind: TokenKind,
+    pub user_id: String,
+    pub exp: u64,
 }
 
 pub struct Jwt {
@@ -53,7 +54,7 @@ impl Jwt {
     }
 
     /// Will panic if the public key is damaged.
-    pub fn verify(&self, token: String) -> Option<TokenClaims> {
+    pub fn verify(&self, token: &str) -> Option<TokenClaims> {
         let data = jsonwebtoken::decode::<TokenClaims>(
             token,
             &self.public_key,
