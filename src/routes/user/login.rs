@@ -73,7 +73,7 @@ pub async fn handler(
                 Some(_) => {
                     return base::response::error(
                         StatusCode::FORBIDDEN,
-                        "This account is pending for deletion, please recover this account",
+                        "This account is pending for deletion, please recover this account.",
                         None
                     );
                 }
