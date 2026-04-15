@@ -9,6 +9,8 @@ use axum::{
 use cookie_rs::Cookie;
 use reqwest::header::COOKIE;
 
+use crate::{ AppState, utils::jwt::TokenClaims };
+
 #[derive(Clone)]
 pub enum AuthorizationStatus {
     Authorized,
@@ -17,7 +19,7 @@ pub enum AuthorizationStatus {
 
 #[derive(Clone)]
 pub struct AuthorizationInfo {
-    pub token: Option<TokenQuery>,
+    pub token: Option<TokenClaims>,
     pub status: AuthorizationStatus,
 }
 
@@ -44,14 +46,14 @@ async fn parse_cookies(state: Arc<AppState>, cookies: &str) -> AuthorizationInfo
 
     for cookie in cookies.split("; ") {
         if let Ok(payload) = Cookie::parse(cookie) && payload.name() == "token" {
-            token = parse_token(payload.value());
+            token = state.jwt.verify(payload.value());
             break;
         }
     }
 
     return match token {
         Some(token) => {
-            match state.db.user.cache.token.clone().authorize(&token).await {
+            match state.db.user.token.clone().authorize(&token).await {
                 Ok(true) =>
                     AuthorizationInfo {
                         token: Some(token),
@@ -70,21 +72,4 @@ async fn parse_cookies(state: Arc<AppState>, cookies: &str) -> AuthorizationInfo
                 status: AuthorizationStatus::Unauthorized,
             },
     };
-}
-
-fn parse_token(raw_token: &str) -> Option<TokenQuery> {
-    let raw_token: Vec<&str> = raw_token.split(".").collect();
-
-    let created_at = match raw_token.get(1)?.to_owned().parse::<i64>() {
-        Ok(created_at) => created_at,
-        Err(_) => {
-            return None;
-        }
-    };
-
-    Some(TokenQuery {
-        user_id: raw_token.get(0)?.to_owned().to_owned(),
-        created_at,
-        secret: raw_token.get(2)?.to_owned().to_owned(),
-    })
 }
