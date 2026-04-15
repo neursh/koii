@@ -84,18 +84,17 @@ impl DocumentOperations {
         Ok(self.get(filter).await?.is_some())
     }
 
-    pub async fn create_totp(&self, user_id: &str) -> Result<Option<Totp>, mongodb::error::Error> {
-        let user_totp = Totp::new();
-
+    pub async fn add_totp(
+        &self,
+        user_id: &str,
+        user_totp: &Totp
+    ) -> Result<bool, mongodb::error::Error> {
         let result = self.collection.update_one(
             bson::doc! { "user_id": user_id, "totp": { "$exists": false } },
-            bson::doc! { "$set": { "totp": bson::serialize_to_bson(&user_totp).unwrap() } }
+            bson::doc! { "$set": { "totp": bson::serialize_to_bson(user_totp).unwrap() } }
         ).await?;
 
-        match result.modified_count {
-            1 => Ok(Some(user_totp)),
-            _ => Ok(None),
-        }
+        Ok(result.modified_count == 1)
     }
 
     pub async fn get_totp(&self, user_id: &str) -> Result<Option<Totp>, mongodb::error::Error> {

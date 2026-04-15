@@ -5,6 +5,7 @@ use crate::{
     base::{ self, response::ResponseModel },
     middlewares::auth::{ AuthorizationInfo, AuthorizationStatus },
     routes::user::UserRoutesState,
+    utils::totp::Totp,
 };
 
 pub async fn handler(
@@ -25,9 +26,16 @@ pub async fn handler(
         }
     };
 
-    let totp = match state.app.db.user.document.create_totp(&token.user_id).await {
-        Ok(Some(totp)) => { totp }
-        Ok(None) => {
+    let totp = match Totp::new(token.user_id.clone()) {
+        Ok(totp) => totp,
+        Err(_) => {
+            return base::response::internal_error(None);
+        }
+    };
+
+    match state.app.db.user.document.add_totp(&token.user_id, &totp).await {
+        Ok(true) => {}
+        Ok(false) => {
             return base::response::error(
                 StatusCode::FORBIDDEN,
                 "There is an exisiting TOTP. Please delete it first.",
@@ -37,7 +45,7 @@ pub async fn handler(
         Err(_) => {
             return base::response::internal_error(None);
         }
-    };
+    }
 
-    base::response::result(StatusCode::CREATED, totp.url(token.user_id).unwrap().into(), None)
+    base::response::result(StatusCode::CREATED, totp.url.into(), None)
 }
