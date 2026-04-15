@@ -1,12 +1,20 @@
-use axum::{ Extension, Json, extract::State, http::StatusCode };
+use axum::{
+    Extension,
+    Json,
+    extract::State,
+    http::{ StatusCode, header::SET_COOKIE },
+    response::AppendHeaders,
+};
 use mongodb::bson;
 use serde::Deserialize;
 use validator::Validate;
 
 use crate::{
     base::{ self, response::ResponseModel },
+    consts::{ REFRESH_MAX_AGE, TOKEN_MAX_AGE },
     middlewares::auth::{ AuthorizationInfo, AuthorizationStatus },
     routes::user::UserRoutesState,
+    utils::cookies,
     workers::verify_pass::VerifyPassRequest,
 };
 
@@ -45,12 +53,12 @@ pub async fn handler(
         }
     }
 
-    let edge_user = state.app.db.user.document.get(
+    let user = state.app.db.user.document.get(
         bson::doc! {
             "email": &payload.email
         }
     ).await;
-    let user = match edge_user {
+    let user = match user {
         Ok(Some(user)) => user,
         Ok(None) => {
             return base::response::error(StatusCode::FORBIDDEN, "Wrong email or password.", None);
@@ -88,8 +96,20 @@ pub async fn handler(
         }
     }
 
-    return match state.app.db.user.token.clone().create(&state.app.jwt, user.user_id).await {
-        Ok(header) => { base::response::success(StatusCode::OK, Some(header)) }
+    let (token, refresh) = state.app.jwt.generate_pair(user.user_id.clone());
+
+    return match
+        state.app.db.user.token.clone().create(user.user_id, token.0.identifier, token.0.exp).await
+    {
+        Ok(_) => {
+            let token_cookie = cookies::construct("token", token.1, TOKEN_MAX_AGE);
+            let refresh_cookie = cookies::construct("refresh", refresh.1, REFRESH_MAX_AGE);
+
+            base::response::success(
+                StatusCode::OK,
+                Some(AppendHeaders(vec![(SET_COOKIE, token_cookie), (SET_COOKIE, refresh_cookie)]))
+            )
+        }
         Err(error) => {
             tracing::error!("{}\n{}", payload.email, error);
             base::response::internal_error(None)

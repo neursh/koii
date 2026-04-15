@@ -1,7 +1,10 @@
 use std::{ fs::File, io::Read, path::Path };
 
 use jsonwebtoken::{ Algorithm, DecodingKey, EncodingKey, Header, Validation };
+use nanoid::nanoid;
 use serde::{ Deserialize, Serialize };
+
+use crate::consts::{ REFRESH_MAX_AGE, TOKEN_MAX_AGE };
 
 #[derive(Clone, Serialize, Deserialize)]
 pub enum TokenKind {
@@ -41,16 +44,49 @@ impl Jwt {
     }
 
     /// Will panic if the private key is damaged.
-    pub fn generate(&self, claims: TokenClaims) -> String {
+    ///
+    /// Returns a pair of key, one is the auth token, one is refresh token.
+    pub fn generate_pair(&self, user_id: String) -> ((TokenClaims, String), (TokenClaims, String)) {
+        let identifier = nanoid!(10);
+        let created_at = jsonwebtoken::get_current_timestamp();
+
+        let token_claims = TokenClaims {
+            identifier: identifier.clone(),
+            kind: TokenKind::AUTHENTICATION,
+            user_id: user_id.clone(),
+            exp: created_at + TOKEN_MAX_AGE.as_secs(),
+        };
+
         let token = jsonwebtoken::jws
             ::encode(
                 &Header::new(Algorithm::ES256),
-                Some(&claims),
+                Some(&token_claims),
                 self.private_key.as_ref().unwrap()
             )
             .unwrap();
 
-        format!("{}.{}.{}", token.protected, token.payload, token.signature)
+        let refresh_claims = TokenClaims {
+            identifier: identifier.clone(),
+            kind: TokenKind::REFRESH,
+            user_id: user_id.clone(),
+            exp: created_at + REFRESH_MAX_AGE.as_secs(),
+        };
+
+        let refresh = jsonwebtoken::jws
+            ::encode(
+                &Header::new(Algorithm::ES256),
+                Some(&refresh_claims),
+                self.private_key.as_ref().unwrap()
+            )
+            .unwrap();
+
+        (
+            (token_claims, format!("{}.{}.{}", token.protected, token.payload, token.signature)),
+            (
+                refresh_claims,
+                format!("{}.{}.{}", refresh.protected, refresh.payload, refresh.signature),
+            ),
+        )
     }
 
     /// Will panic if the public key is damaged.

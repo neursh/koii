@@ -27,15 +27,15 @@ impl Totp {
         }
     }
 
-    pub fn url(&self, email: String) -> Result<String, TotpError> {
+    pub fn url(&self, user_id: String) -> Result<String, TotpError> {
         let totp = TOTP::new(
             totp_rs::Algorithm::SHA1,
             6,
             1,
             30,
             self.secret.clone().bytes,
-            Some("Koii-Auth".to_string()),
-            email
+            Some("Koii".to_string()),
+            user_id
         )?;
 
         Ok(totp.get_url())
@@ -48,7 +48,7 @@ impl Totp {
             1,
             30,
             self.secret.clone().bytes,
-            Some("Koii-Auth".to_string()),
+            Some("Koii".to_string()),
             email
         )?;
 

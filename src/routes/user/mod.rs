@@ -7,7 +7,8 @@ use crate::{ AppState, middlewares::time };
 mod create;
 mod verify;
 mod login;
-mod tfa;
+mod totp;
+mod passkey;
 mod logout;
 mod delete;
 
@@ -26,7 +27,8 @@ pub fn routes(app_state: Arc<AppState>) -> Router {
         .route("/verify", patch(verify::handler))
         .route("/login", post(login::handler))
         .route("/logout", get(logout::handler))
-        // .nest("/2fa", tfa::routes(state.clone()))
+        .nest("/totp", totp::routes(state.clone()))
+        .nest("/passkey", passkey::routes(state.clone()))
         .layer(axum::middleware::from_fn_with_state(Duration::from_millis(800), time::padding))
         .with_state(state)
 }

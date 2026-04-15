@@ -1,4 +1,4 @@
-use mongodb::{ Collection, IndexModel, bson, options::IndexOptions };
+use mongodb::{ Collection, IndexModel, bson, options::{ FindOneOptions, IndexOptions } };
 use serde::{ Deserialize, Serialize };
 
 use crate::{ consts::{ EMAIL_VERIFY_EXPIRE, USER_DELETE_FRAME }, utils::totp::Totp };
@@ -39,10 +39,10 @@ pub struct UserDocument {
     pub deleted: Option<bson::DateTime>,
 }
 
-pub struct UserOperations {
+pub struct DocumentOperations {
     collection: Collection<UserDocument>,
 }
-impl UserOperations {
+impl DocumentOperations {
     pub async fn new(collection: Collection<UserDocument>) -> Result<Self, mongodb::error::Error> {
         collection.create_index(
             IndexModel::builder()
@@ -65,7 +65,7 @@ impl UserOperations {
                 .build()
         ).await?;
 
-        Ok(UserOperations { collection })
+        Ok(DocumentOperations { collection })
     }
 
     pub async fn add(&self, document: &UserDocument) -> Result<(), mongodb::error::Error> {
@@ -82,6 +82,42 @@ impl UserOperations {
 
     pub async fn exists(&self, filter: bson::Document) -> Result<bool, mongodb::error::Error> {
         Ok(self.get(filter).await?.is_some())
+    }
+
+    pub async fn create_totp(&self, user_id: &str) -> Result<Option<Totp>, mongodb::error::Error> {
+        let user_totp = Totp::new();
+
+        let result = self.collection.update_one(
+            bson::doc! { "user_id": user_id, "totp": { "$exists": false } },
+            bson::doc! { "$set": { "totp": bson::serialize_to_bson(&user_totp).unwrap() } }
+        ).await?;
+
+        match result.modified_count {
+            1 => Ok(Some(user_totp)),
+            _ => Ok(None),
+        }
+    }
+
+    pub async fn get_totp(&self, user_id: &str) -> Result<Option<Totp>, mongodb::error::Error> {
+        let partial_document = self.collection
+            .find_one(bson::doc! { "user_id": user_id })
+            .with_options(
+                Some(
+                    FindOneOptions::builder()
+                        .projection(Some(bson::doc! { "totp": 1, "_id": 0 }))
+                        .build()
+                )
+            ).await?;
+
+        match partial_document {
+            Some(partial_document) => {
+                match partial_document.totp {
+                    Some(totp) => Ok(Some(totp)),
+                    None => Ok(None),
+                }
+            }
+            None => Ok(None),
+        }
     }
 
     pub async fn verify_email(&self, verify_code: &str) -> Result<bool, mongodb::error::Error> {

@@ -5,7 +5,7 @@ use validator::Validate;
 
 use crate::{
     base::{ self, response::ResponseModel },
-    database::user::user::UserDocument,
+    database::user::document::UserDocument,
     middlewares::auth::{ AuthorizationInfo, AuthorizationStatus },
     routes::user::UserRoutesState,
     workers::verify_email::VerifyEmailRequest,

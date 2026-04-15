@@ -1,14 +1,9 @@
-use axum::{ http::{ HeaderName, header::SET_COOKIE }, response::AppendHeaders };
 use mongodb::{ Collection, IndexModel, bson, options::IndexOptions };
-use nanoid::nanoid;
 use redis::{ AsyncCommands, RedisError, aio::MultiplexedConnection };
 use serde::{ Deserialize, Serialize };
 use thiserror::Error;
 
-use crate::{
-    consts::{ REFRESH_MAX_AGE, TOKEN_MAX_AGE },
-    utils::{ cookies, jwt::{ Jwt, TokenClaims, TokenKind } },
-};
+use crate::{ consts::REFRESH_MAX_AGE, utils::jwt::TokenClaims };
 
 #[derive(Deserialize, Serialize)]
 pub struct TokenDocument {
@@ -62,46 +57,26 @@ impl TokenOperations {
     /// Formatted as cookies can be passed to client.
     pub async fn create(
         &mut self,
-        jwt: &Jwt,
-        user_id: String
-    ) -> Result<AppendHeaders<Vec<(HeaderName, String)>>, TokenOperationError> {
-        let identifier = nanoid!(10);
-        let created_at = jsonwebtoken::get_current_timestamp();
-
-        let token = jwt.generate(TokenClaims {
-            identifier: identifier.clone(),
-            kind: TokenKind::AUTHENTICATION,
-            user_id: user_id.clone(),
-            exp: created_at + TOKEN_MAX_AGE.as_secs(),
-        });
-
-        let refresh = jwt.generate(TokenClaims {
-            identifier: identifier.clone(),
-            kind: TokenKind::REFRESH,
-            user_id: user_id.clone(),
-            exp: created_at + REFRESH_MAX_AGE.as_secs(),
-        });
-
+        user_id: String,
+        identifier: String,
+        exp: u64
+    ) -> Result<(), TokenOperationError> {
         let cache_key = format!("user:{}:token:{}", user_id, identifier);
 
         // Preload cache.
         self.cache.set::<&str, bool, String>(&cache_key, true).await?;
-        self.cache.expire_at::<&str, bool>(
-            &cache_key,
-            (created_at + REFRESH_MAX_AGE.as_secs()) as i64
-        ).await?;
+        self.cache.expire_at::<&str, bool>(&cache_key, exp as i64).await?;
 
         // Add database entry as a fallback.
         self.collection.insert_one(TokenDocument {
             user_id,
             identifier,
-            created_at: bson::DateTime::from_millis((created_at * 1000) as i64),
+            created_at: bson::DateTime::from_millis(
+                ((exp - REFRESH_MAX_AGE.as_secs()) * 1000) as i64
+            ),
         }).await?;
 
-        let token_cookie = cookies::construct("token", token, TOKEN_MAX_AGE);
-        let refresh_cookie = cookies::construct("refresh", refresh, REFRESH_MAX_AGE);
-
-        Ok(AppendHeaders(vec![(SET_COOKIE, token_cookie), (SET_COOKIE, refresh_cookie)]))
+        Ok(())
     }
 
     pub async fn authorize(&mut self, claims: &TokenClaims) -> Result<bool, TokenOperationError> {
