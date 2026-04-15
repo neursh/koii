@@ -1,5 +1,6 @@
-use axum::{ Extension, extract::State };
+use axum::{ Extension, Json, extract::State };
 use reqwest::StatusCode;
+use serde::Deserialize;
 
 use crate::{
     base::{ self, response::ResponseModel },
@@ -8,12 +9,18 @@ use crate::{
     utils::totp::Totp,
 };
 
+#[derive(Deserialize)]
+pub struct CreatePayload {
+    name: String,
+}
+
 pub async fn handler(
     Extension(authorization_info): Extension<AuthorizationInfo>,
-    State(state): State<UserRoutesState>
+    State(state): State<UserRoutesState>,
+    Json(payload): Json<CreatePayload>
 ) -> ResponseModel {
     match authorization_info.status {
-        AuthorizationStatus::Authorized => (),
+        AuthorizationStatus::Authorized => {} // Authorized, passing down.
         _ => {
             return base::response::error(StatusCode::UNAUTHORIZED, "Get out.", None);
         }
@@ -26,7 +33,7 @@ pub async fn handler(
         }
     };
 
-    let totp = match Totp::new(token.user_id.clone()) {
+    let totp = match Totp::new(payload.name) {
         Ok(totp) => totp,
         Err(_) => {
             return base::response::internal_error(None);
@@ -34,7 +41,7 @@ pub async fn handler(
     };
 
     match state.app.db.user.document.add_totp(&token.user_id, &totp).await {
-        Ok(true) => {}
+        Ok(true) => {} // TOTP added, passing down.
         Ok(false) => {
             return base::response::error(
                 StatusCode::FORBIDDEN,
