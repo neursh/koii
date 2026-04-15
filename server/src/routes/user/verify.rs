@@ -35,7 +35,7 @@ pub async fn handler(
             )
         }
         Err(error) => {
-            tracing::error!(target: "user.verify", "Database failed to verify user: {}", error);
+            tracing::error!("Database failed to verify user: {}", error);
             base::response::internal_error(None)
         }
     };

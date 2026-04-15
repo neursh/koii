@@ -56,7 +56,7 @@ pub async fn handler(
             return base::response::error(StatusCode::FORBIDDEN, "Wrong email or password.", None);
         }
         Err(error) => {
-            tracing::error!(target: "user.login", "{}\n{}", payload.email, error);
+            tracing::error!("{}\n{}", payload.email, error);
             return base::response::internal_error(None);
         }
     };
@@ -73,7 +73,7 @@ pub async fn handler(
                     return base::response::success(StatusCode::OK, Some(header));
                 }
                 Err(error) => {
-                    tracing::error!(target: "user.login", "{}\n{}", payload.email, error);
+                    tracing::error!("{}\n{}", payload.email, error);
                     return base::response::internal_error(None);
                 }
             };
@@ -82,7 +82,7 @@ pub async fn handler(
             return base::response::error(StatusCode::FORBIDDEN, "Wrong email or password.", None);
         }
         _ => {
-            tracing::error!(target: "user.login", "Verify password worker failure.");
+            tracing::error!("Verify password worker failure.");
             return base::response::internal_error(None);
         }
     };

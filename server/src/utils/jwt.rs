@@ -28,7 +28,7 @@ impl Jwt {
                 if let Some(private_keyring) = quick_read("private.kc.pem") {
                     Some(EncodingKey::from_ec_pem(&private_keyring).unwrap())
                 } else {
-                    tracing::error!(target: "serverproc", "No private key for JWT installed.");
+                    tracing::error!("No private key for JWT installed.");
                     None
                 }
             },

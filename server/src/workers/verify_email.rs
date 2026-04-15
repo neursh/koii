@@ -13,7 +13,7 @@ pub fn launch(
     threads: usize
 ) {
     if threads > 1 {
-        tracing::warn!(target: "workers.verify_email", "But sire, there can only be 1 email worker.");
+        tracing::warn!("But sire, there can only be 1 email worker.");
     }
 
     let rx = rx.to_sync();

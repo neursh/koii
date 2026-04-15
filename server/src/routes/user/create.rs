@@ -59,7 +59,7 @@ pub async fn handler(
             );
         }
         Err(_) => {
-            tracing::error!(target: "user.create", "Turnstile failure.");
+            tracing::error!("Turnstile failure.");
             return base::response::internal_error(None);
         }
     }
@@ -69,7 +69,7 @@ pub async fn handler(
     let password_hash = match state.app.worker.hash_pass.send(payload.password).await {
         Ok(Some(hash)) => hash,
         _ => {
-            tracing::error!(target: "user.create", "Hash password worker failure.");
+            tracing::error!("Hash password worker failure.");
             return base::response::internal_error(None);
         }
     };
@@ -99,7 +99,7 @@ pub async fn handler(
                     );
                 }
                 _ => {
-                    tracing::error!(target: "user.create", "Database failed to store a user: {}", error);
+                    tracing::error!("Database failed to store a user: {}", error);
                     return base::response::internal_error(None);
                 }
             }
@@ -114,7 +114,7 @@ pub async fn handler(
     {
         Ok(_) => {}
         Err(_) => {
-            tracing::error!(target: "user.create", "Email worker failed to deliver the verification link for {}.", user_id);
+            tracing::error!("Email worker failed to deliver the verification link for {}.", user_id);
             return base::response::internal_error(None);
         }
     }

@@ -37,7 +37,7 @@ async fn main() {
 
     let host = std::env::var("HOST").expect("HOST must be set in .env file");
 
-    tracing::info!(target: "serverproc", "Initializing server state...");
+    tracing::info!("Initializing server state...");
     let app_state = Arc::new(AppState {
         worker: Workers::new(WorkersAllocate {
             hash_pass: WorkerSpec {
@@ -77,17 +77,17 @@ async fn main() {
         .layer(DefaultBodyLimit::max(2 * 1024 * 1024))
         .layer(cors);
 
-    tracing::info!(target: "serverproc", "Hello, world (world here is {})! :3", host);
+    tracing::info!("Hello, world (world here is {})! :3", host);
 
     let mode: Vec<String> = args().collect();
     if mode.len() != 2 {
-        tracing::error!(target: "serverproc", "No required arguments provided.");
+        tracing::error!("No required arguments provided. [online/offline]");
         return;
     }
 
     match mode[1].as_str() {
         "online" => {
-            tracing::info!(target: "serverproc", "Serving in online mode...");
+            tracing::info!("Serving in online mode...");
             rustls::crypto::ring::default_provider().install_default().unwrap();
             let tls_config = RustlsConfig::from_pem_file(
                 "cf-ocert.pem",
@@ -99,10 +99,10 @@ async fn main() {
                 .unwrap();
         }
         "offline" => {
-            tracing::info!(target: "serverproc", "Serving in offline mode...");
-            tracing::warn!(target: "serverproc", "Offline mode is for local development only, do not fuck this up, plwease QwQ");
+            tracing::info!("Serving in offline mode...");
+            tracing::warn!("Offline mode is for local development only, do not fuck this up, plwease QwQ");
             axum_server::bind(host.parse().unwrap()).serve(app.into_make_service()).await.unwrap();
         }
-        _ => tracing::info!(target: "serverproc", "No mode chosen, shutting down..."),
+        _ => tracing::info!("No mode chosen, shutting down..."),
     }
 }

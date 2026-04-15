@@ -65,7 +65,7 @@ impl UserOperations {
                 .build()
         ).await?;
 
-        return Ok(UserOperations { collection });
+        Ok(UserOperations { collection })
     }
 
     pub async fn add(&self, document: &UserDocument) -> Result<(), mongodb::error::Error> {

@@ -33,7 +33,7 @@ pub async fn handler(
     match state.app.db.user.document.mark_deletion(&token.user_id).await {
         Ok(_) => {}
         Err(error) => {
-            tracing::error!(target: "endpoint.delete.profile", "{}\n{}", token.user_id, error);
+            tracing::error!("{}\n{}", token.user_id, error);
             return base::response::internal_error(None);
         }
     }
@@ -54,7 +54,7 @@ pub async fn handler(
             )
         }
         Err(error) => {
-            tracing::error!(target: "endpoint.delete.token", "{}\n{}", token.user_id, error);
+            tracing::error!("{}\n{}", token.user_id, error);
             base::response::internal_error(None)
         }
     };
