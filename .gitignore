@@ -3,3 +3,6 @@
 private.key
 private.kc.pem
 public.kc.pem
+cf-ocert.pem
+cf-okey.pem
+koii-auth1.pem
