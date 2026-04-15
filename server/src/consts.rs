@@ -8,3 +8,5 @@ pub const REFRESH_MAX_AGE: Duration = Duration::from_hours(15 * 24);
 pub const SUDO_MAX_AGE: Duration = Duration::from_mins(1);
 /// 10 minutes.
 pub const EMAIL_VERIFY_EXPIRE: Duration = Duration::from_mins(10);
+/// 30 days.
+pub const USER_DELETE_FRAME: Duration = Duration::from_hours(30 * 24);
