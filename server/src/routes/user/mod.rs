@@ -1,14 +1,8 @@
-use std::{ sync::Arc, time::{ Duration, SystemTime } };
+use std::{ sync::Arc, time::Duration };
 
-use axum::{
-    Router,
-    extract::Request,
-    middleware::Next,
-    response::IntoResponse,
-    routing::{ get, patch, post },
-};
+use axum::{ Router, routing::{ get, patch, post } };
 
-use crate::AppState;
+use crate::{ AppState, middlewares::time };
 
 mod create;
 mod verify;
@@ -32,23 +26,7 @@ pub fn routes(app_state: Arc<AppState>) -> Router {
         .route("/verify", patch(verify::handler))
         .route("/login", post(login::handler))
         .route("/logout", get(logout::handler))
-        .nest("/2fa", tfa::routes(state.clone()))
-        .layer(axum::middleware::from_fn(time_raiser))
+        // .nest("/2fa", tfa::routes(state.clone()))
+        .layer(axum::middleware::from_fn_with_state(Duration::from_millis(800), time::padding))
         .with_state(state)
-}
-
-const RAISE_MAX_TO: Duration = Duration::from_millis(800);
-
-pub async fn time_raiser(request: Request, next: Next) -> impl IntoResponse {
-    let start = SystemTime::now();
-    next.run(request).await;
-
-    match start.elapsed() {
-        Ok(finish) => {
-            if finish < RAISE_MAX_TO {
-                tokio::time::sleep(RAISE_MAX_TO - finish).await;
-            }
-        }
-        Err(_) => {}
-    }
 }
