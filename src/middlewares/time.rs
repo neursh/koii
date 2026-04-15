@@ -15,7 +15,11 @@ pub async fn padding(
             if finish < pad {
                 tokio::time::sleep(pad - finish).await;
             } else {
-                tracing::warn!("Time spent was too much for raising: {}ms", finish.as_millis());
+                tracing::warn!(
+                    "Time spent was too much for raising: {}ms > {}ms",
+                    finish.as_millis(),
+                    pad.as_millis()
+                );
             }
         }
         Err(_) => {}
