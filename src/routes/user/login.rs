@@ -68,15 +68,16 @@ pub async fn handler(
         }).await
     {
         Ok(Some(true)) => {
-            match state.app.db.user.token.clone().create(&state.app.jwt, user.user_id).await {
-                Ok(header) => {
-                    return base::response::success(StatusCode::OK, Some(header));
+            match user.deleted {
+                None => {}
+                Some(_) => {
+                    return base::response::error(
+                        StatusCode::FORBIDDEN,
+                        "This account is pending for deletion, please recover this account",
+                        None
+                    );
                 }
-                Err(error) => {
-                    tracing::error!("{}\n{}", payload.email, error);
-                    return base::response::internal_error(None);
-                }
-            };
+            }
         }
         Ok(Some(false)) => {
             return base::response::error(StatusCode::FORBIDDEN, "Wrong email or password.", None);
@@ -84,6 +85,14 @@ pub async fn handler(
         _ => {
             tracing::error!("Verify password worker failure.");
             return base::response::internal_error(None);
+        }
+    }
+
+    return match state.app.db.user.token.clone().create(&state.app.jwt, user.user_id).await {
+        Ok(header) => { base::response::success(StatusCode::OK, Some(header)) }
+        Err(error) => {
+            tracing::error!("{}\n{}", payload.email, error);
+            base::response::internal_error(None)
         }
     };
 }
