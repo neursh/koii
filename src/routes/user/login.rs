@@ -101,24 +101,28 @@ pub async fn handler(
     match user.totp {
         None => {} // No 2FA setup detected, passing down.
         Some(totp) => {
-            match payload.totp_code {
-                Some(totp_code) => {
-                    match totp.verify(&totp_code) {
-                        Ok(true) => {} // Correct token, passing down.
-                        Ok(false) => {
-                            return base::response::error(
-                                StatusCode::UNAUTHORIZED,
-                                "The TOTP code provided was wrong.",
-                                None
-                            );
-                        }
-                        Err(_) => {
-                            return base::response::internal_error(None);
-                        }
-                    }
-                }
+            let totp_code = match payload.totp_code {
+                Some(totp_code) => { totp_code }
                 None => {
-                    return base::response::result(StatusCode::ACCEPTED, "TOTP".into(), None);
+                    return base::response::result(
+                        StatusCode::ACCEPTED,
+                        "TOTP Required".into(),
+                        None
+                    );
+                }
+            };
+
+            match totp.verify(&totp_code) {
+                Ok(true) => {} // Correct token, passing down.
+                Ok(false) => {
+                    return base::response::error(
+                        StatusCode::UNAUTHORIZED,
+                        "The TOTP code provided was wrong.",
+                        None
+                    );
+                }
+                Err(_) => {
+                    return base::response::internal_error(None);
                 }
             }
         }
