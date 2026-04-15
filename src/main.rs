@@ -1,4 +1,4 @@
-use std::{ env::args, sync::Arc };
+use std::{ env::args, net::SocketAddr, sync::Arc };
 
 use axum::{
     Router,
@@ -7,6 +7,7 @@ use axum::{
     http::{ Method, header::{ AUTHORIZATION, CONTENT_TYPE } },
 };
 use axum_server::tls_rustls::RustlsConfig;
+use rustls::crypto;
 use tower_http::{ cors::CorsLayer, trace::TraceLayer };
 use crate::{
     database::Database,
@@ -35,7 +36,13 @@ async fn main() {
     dotenv::dotenv().ok();
     tracing_subscriber::fmt().init();
 
-    let host = std::env::var("HOST").expect("HOST must be set in .env file");
+    crypto::ring::default_provider().install_default().unwrap();
+
+    let host = std::env
+        ::var("HOST")
+        .expect("HOST must be set in .env file")
+        .parse::<SocketAddr>()
+        .unwrap();
 
     tracing::info!("Initializing server state...");
     let app_state = Arc::new(AppState {
@@ -94,14 +101,16 @@ async fn main() {
                 "cf-okey.pem"
             ).await.unwrap();
             axum_server
-                ::bind_rustls(host.parse().unwrap(), tls_config)
+                ::bind_rustls(host, tls_config)
                 .serve(app.into_make_service()).await
                 .unwrap();
         }
         "offline" => {
             tracing::info!("Serving in offline mode...");
-            tracing::warn!("Offline mode is for local development only, do not fuck this up, plwease QwQ");
-            axum_server::bind(host.parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+            tracing::warn!(
+                "Offline mode is for local development only, do not fuck this up, plwease QwQ"
+            );
+            axum_server::bind(host).serve(app.into_make_service()).await.unwrap();
         }
         _ => tracing::info!("No mode chosen, shutting down..."),
     }
