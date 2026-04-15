@@ -22,7 +22,9 @@ pub async fn padding(
                 );
             }
         }
-        Err(_) => {}
+        Err(err) => {
+            tracing::error!("{}", err);
+        }
     }
 
     response
