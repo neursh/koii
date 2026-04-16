@@ -28,7 +28,7 @@ impl Totp {
             6,
             1,
             30,
-            secret,
+            secret.clone(),
             Some("Koii".to_string()),
             name.clone()
         )?;
@@ -36,7 +36,7 @@ impl Totp {
         Ok(Totp {
             secret: Binary {
                 subtype: mongodb::bson::spec::BinarySubtype::Generic,
-                bytes: nanoid::rngs::default(128),
+                bytes: secret,
             },
             url: totp.get_url(),
             name,
