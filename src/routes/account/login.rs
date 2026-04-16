@@ -126,7 +126,7 @@ pub async fn handler(
     return match
         state.app.db.account.token
             .clone()
-            .create(account.account_id, token.0.identifier, token.0.exp).await
+            .create(account.account_id, refresh.0.identifier, refresh.0.exp).await
     {
         Ok(_) => {
             let token_cookie = cookies::construct("token", token.1, TOKEN_MAX_AGE);
