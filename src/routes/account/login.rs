@@ -47,7 +47,7 @@ pub async fn handler(
             if let Some(field) = field.errors().iter().next() {
                 return base::response::error(
                     StatusCode::BAD_REQUEST,
-                    &format!("A field is not satisfied: {}", field.0),
+                    &format!("At least one field is not satisfied: {}", field.0),
                     None
                 );
             }
@@ -101,15 +101,8 @@ pub async fn handler(
     match account.totp {
         None => {} // No 2FA setup detected, passing down.
         Some(totp) => {
-            let totp_code = match payload.totp_code {
-                Some(totp_code) => { totp_code }
-                None => {
-                    return base::response::result(
-                        StatusCode::ACCEPTED,
-                        "TOTP Required".into(),
-                        None
-                    );
-                }
+            let Some(totp_code) = payload.totp_code else {
+                return base::response::result(StatusCode::ACCEPTED, "TOTP Required".into(), None);
             };
 
             match totp.verify(&totp_code) {
