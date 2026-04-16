@@ -1,9 +1,9 @@
-use crate::database::user::UserDatabase;
+use crate::database::account::AccountDatabase;
 
-pub mod user;
+pub mod account;
 
 pub struct Database {
-    pub user: UserDatabase,
+    pub account: AccountDatabase,
 }
 
 impl Database {
@@ -25,7 +25,7 @@ impl Database {
             .unwrap();
 
         Database {
-            user: UserDatabase::default(mongo_database, redis_client).await.unwrap(),
+            account: AccountDatabase::default(mongo_database, redis_client).await.unwrap(),
         }
     }
 }

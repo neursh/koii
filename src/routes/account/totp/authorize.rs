@@ -4,7 +4,7 @@ use serde::Deserialize;
 use crate::{
     base::{ self, response::ResponseModel },
     middlewares::auth::{ AuthorizationInfo, AuthorizationStatus },
-    routes::user::UserRoutesState,
+    routes::account::AccountRoutesState,
 };
 
 #[derive(Deserialize)]
@@ -14,7 +14,7 @@ pub struct AuthorizePayload {
 
 pub async fn handler(
     Extension(authorization_info): Extension<AuthorizationInfo>,
-    State(state): State<UserRoutesState>,
+    State(state): State<AccountRoutesState>,
     Json(payload): Json<AuthorizePayload>
 ) -> ResponseModel {
     match authorization_info.status {
@@ -31,7 +31,7 @@ pub async fn handler(
         }
     };
 
-    let totp = match state.app.db.user.document.get_totp(&token.user_id).await {
+    let totp = match state.app.db.account.document.get_totp(&token.account_id).await {
         Ok(Some(totp)) => totp,
         Ok(None) => {
             return base::response::error(

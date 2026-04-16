@@ -7,8 +7,8 @@ use crate::{ consts::REFRESH_MAX_AGE, utils::jwt::TokenClaims };
 
 #[derive(Deserialize, Serialize)]
 pub struct TokenDocument {
-    /// Unique ID to the user.
-    pub user_id: String,
+    /// Unique ID to the account.
+    pub account_id: String,
 
     /// The token's identifier.
     pub identifier: String,
@@ -43,7 +43,7 @@ impl TokenOperations {
 
         collection.create_index(
             IndexModel::builder()
-                .keys(bson::doc! { "user_id": 1, "identifier": 1 })
+                .keys(bson::doc! { "account_id": 1, "identifier": 1 })
                 .build()
         ).await?;
 
@@ -57,11 +57,11 @@ impl TokenOperations {
     /// Formatted as cookies can be passed to client.
     pub async fn create(
         &mut self,
-        user_id: String,
+        account_id: String,
         identifier: String,
         exp: u64
     ) -> Result<(), TokenOperationError> {
-        let cache_key = format!("user:{}:token:{}", user_id, identifier);
+        let cache_key = format!("account:{}:token:{}", account_id, identifier);
 
         // Preload cache.
         self.cache.set::<&str, bool, String>(&cache_key, true).await?;
@@ -69,7 +69,7 @@ impl TokenOperations {
 
         // Add database entry as a fallback.
         self.collection.insert_one(TokenDocument {
-            user_id,
+            account_id,
             identifier,
             created_at: bson::DateTime::from_millis(
                 ((exp - REFRESH_MAX_AGE.as_secs()) * 1000) as i64
@@ -81,7 +81,7 @@ impl TokenOperations {
 
     pub async fn authorize(&mut self, claims: &TokenClaims) -> Result<bool, TokenOperationError> {
         let status = self.cache.get::<String, Option<bool>>(
-            format!("user:{}:token:{}", claims.user_id, claims.identifier)
+            format!("account:{}:token:{}", claims.account_id, claims.identifier)
         ).await?;
 
         return match status {
@@ -92,19 +92,19 @@ impl TokenOperations {
 
     pub async fn revoke(&mut self, claims: &TokenClaims) -> Result<bool, TokenOperationError> {
         self.cache.set::<String, bool, String>(
-            format!("user:{}:token:{}", &claims.user_id, &claims.identifier),
+            format!("account:{}:token:{}", &claims.account_id, &claims.identifier),
             false
         ).await?;
 
         let db_result = self.collection.delete_one(
-            bson::doc! { "user_id": &claims.user_id, "identifier": &claims.identifier }
+            bson::doc! { "account_id": &claims.account_id, "identifier": &claims.identifier }
         ).await?;
 
         Ok(db_result.deleted_count == 1)
     }
 
-    pub async fn revoke_all(&mut self, user_id: &str) -> Result<u64, TokenOperationError> {
-        let mut tokens_cursor = self.collection.find(bson::doc! { "user_id": user_id }).await?;
+    pub async fn revoke_all(&mut self, account_id: &str) -> Result<u64, TokenOperationError> {
+        let mut tokens_cursor = self.collection.find(bson::doc! { "account_id": account_id }).await?;
 
         // Loop through database to batch a cache request for all tokens.
         let mut mset_props: Vec<(String, bool)> = Vec::new();
@@ -114,12 +114,12 @@ impl TokenOperations {
             )?;
 
             mset_props.push((
-                format!("user:{}:token:{}", &token_doc.user_id, &token_doc.identifier),
+                format!("account:{}:token:{}", &token_doc.account_id, &token_doc.identifier),
                 false,
             ));
         }
 
-        let db_result = self.collection.delete_many(bson::doc! { "user_id": user_id }).await?;
+        let db_result = self.collection.delete_many(bson::doc! { "account_id": account_id }).await?;
 
         self.cache.mset::<_, _, String>(&mset_props).await?;
 
@@ -129,10 +129,10 @@ impl TokenOperations {
     /// Cache miss, ask the database instead if this token is valid or not.
     async fn refetch(&mut self, claims: &TokenClaims) -> Result<bool, TokenOperationError> {
         let document = self.collection.find_one(
-            bson::doc! { "_id": &claims.user_id, "identifier": &claims.identifier }
+            bson::doc! { "_id": &claims.account_id, "identifier": &claims.identifier }
         ).await?;
 
-        let cache_key = format!("user:{}:token:{}", claims.user_id, claims.identifier);
+        let cache_key = format!("account:{}:token:{}", claims.account_id, claims.identifier);
 
         let status = match document {
             Some(_) => {

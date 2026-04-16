@@ -1,23 +1,23 @@
 use mongodb::{ Collection, IndexModel, bson, options::{ FindOneOptions, IndexOptions } };
 use serde::{ Deserialize, Serialize };
 
-use crate::{ consts::{ EMAIL_VERIFY_EXPIRE, USER_DELETE_FRAME }, utils::totp::Totp };
+use crate::{ consts::{ EMAIL_VERIFY_EXPIRE, ACCOUNT_DELETE_FRAME }, utils::totp::Totp };
 
 #[derive(Deserialize, Serialize)]
-pub struct UserDocument {
-    /// Unique ID to the user.
-    pub user_id: String,
+pub struct AccountDocument {
+    /// Unique ID to the account.
+    pub account_id: String,
 
-    /// User's email.
+    /// Account's email.
     pub email: String,
 
-    /// User's password hash using argon2id.
+    /// Account's password hash using argon2id.
     pub password_hash: String,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub totp: Option<Totp>,
 
-    /// The time when user verified the account locking in as the creation time.
+    /// The time when the user verified the account locking in as the creation time.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub created_at: Option<bson::DateTime>,
 
@@ -32,21 +32,21 @@ pub struct UserDocument {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub verify_code: Option<String>,
 
-    /// Mark the user as deleted when the user request for deletion.
+    /// Mark the account as deleted when the user request for deletion.
     ///
-    /// TTL: USER_DELETE_FRAME
+    /// TTL: ACCOUNT_DELETE_FRAME
     #[serde(skip_serializing_if = "Option::is_none")]
     pub deleted: Option<bson::DateTime>,
 }
 
 pub struct DocumentOperations {
-    collection: Collection<UserDocument>,
+    collection: Collection<AccountDocument>,
 }
 impl DocumentOperations {
-    pub async fn new(collection: Collection<UserDocument>) -> Result<Self, mongodb::error::Error> {
+    pub async fn new(collection: Collection<AccountDocument>) -> Result<Self, mongodb::error::Error> {
         collection.create_index(
             IndexModel::builder()
-                .keys(bson::doc! { "email": 1, "user_id": 1 })
+                .keys(bson::doc! { "email": 1, "account_id": 1 })
                 .options(IndexOptions::builder().unique(true).build())
                 .build()
         ).await?;
@@ -61,14 +61,14 @@ impl DocumentOperations {
         collection.create_index(
             IndexModel::builder()
                 .keys(bson::doc! { "deleted": 1 })
-                .options(IndexOptions::builder().expire_after(USER_DELETE_FRAME).build())
+                .options(IndexOptions::builder().expire_after(ACCOUNT_DELETE_FRAME).build())
                 .build()
         ).await?;
 
         Ok(DocumentOperations { collection })
     }
 
-    pub async fn add(&self, document: &UserDocument) -> Result<(), mongodb::error::Error> {
+    pub async fn add(&self, document: &AccountDocument) -> Result<(), mongodb::error::Error> {
         self.collection.insert_one(document).await?;
         Ok(())
     }
@@ -76,7 +76,7 @@ impl DocumentOperations {
     pub async fn get(
         &self,
         filter: bson::Document
-    ) -> Result<Option<UserDocument>, mongodb::error::Error> {
+    ) -> Result<Option<AccountDocument>, mongodb::error::Error> {
         self.collection.find_one(filter).await
     }
 
@@ -86,20 +86,20 @@ impl DocumentOperations {
 
     pub async fn add_totp(
         &self,
-        user_id: &str,
-        user_totp: &Totp
+        account_id: &str,
+        account_totp: &Totp
     ) -> Result<bool, mongodb::error::Error> {
         let result = self.collection.update_one(
-            bson::doc! { "user_id": user_id, "totp": { "$exists": false } },
-            bson::doc! { "$set": { "totp": bson::serialize_to_bson(user_totp).unwrap() } }
+            bson::doc! { "account_id": account_id, "totp": { "$exists": false } },
+            bson::doc! { "$set": { "totp": bson::serialize_to_bson(account_totp).unwrap() } }
         ).await?;
 
         Ok(result.modified_count == 1)
     }
 
-    pub async fn get_totp(&self, user_id: &str) -> Result<Option<Totp>, mongodb::error::Error> {
+    pub async fn get_totp(&self, account_id: &str) -> Result<Option<Totp>, mongodb::error::Error> {
         let partial_document = self.collection
-            .find_one(bson::doc! { "user_id": user_id })
+            .find_one(bson::doc! { "account_id": account_id })
             .with_options(
                 Some(
                     FindOneOptions::builder()
@@ -136,18 +136,18 @@ impl DocumentOperations {
         Ok(result.modified_count == 1)
     }
 
-    pub async fn mark_deletion(&self, user_id: &str) -> Result<bool, mongodb::error::Error> {
+    pub async fn mark_deletion(&self, account_id: &str) -> Result<bool, mongodb::error::Error> {
         let result = self.collection.update_one(
-            bson::doc! { "user_id": user_id },
+            bson::doc! { "account_id": account_id },
             bson::doc! { "$set": { "deleted": bson::DateTime::now() } }
         ).await?;
 
         Ok(result.modified_count == 1)
     }
 
-    pub async fn unmark_deletion(&self, user_id: &str) -> Result<bool, mongodb::error::Error> {
+    pub async fn unmark_deletion(&self, account_id: &str) -> Result<bool, mongodb::error::Error> {
         let result = self.collection.update_one(
-            bson::doc! { "user_id": user_id },
+            bson::doc! { "account_id": account_id },
             bson::doc! { "$unset": { "deleted": "" } }
         ).await?;
 

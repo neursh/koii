@@ -16,7 +16,7 @@ pub enum TokenKind {
 pub struct TokenClaims {
     pub identifier: String,
     pub kind: TokenKind,
-    pub user_id: String,
+    pub account_id: String,
     pub exp: u64,
 }
 
@@ -46,14 +46,14 @@ impl Jwt {
     /// Will panic if the private key is damaged.
     ///
     /// Returns a pair of key, one is the auth token, one is refresh token.
-    pub fn generate_pair(&self, user_id: String) -> ((TokenClaims, String), (TokenClaims, String)) {
+    pub fn generate_pair(&self, account_id: String) -> ((TokenClaims, String), (TokenClaims, String)) {
         let identifier = nanoid!(10);
         let created_at = jsonwebtoken::get_current_timestamp();
 
         let token_claims = TokenClaims {
             identifier: identifier.clone(),
             kind: TokenKind::AUTHENTICATION,
-            user_id: user_id.clone(),
+            account_id: account_id.clone(),
             exp: created_at + TOKEN_MAX_AGE.as_secs(),
         };
 
@@ -68,7 +68,7 @@ impl Jwt {
         let refresh_claims = TokenClaims {
             identifier: identifier.clone(),
             kind: TokenKind::REFRESH,
-            user_id: user_id.clone(),
+            account_id: account_id.clone(),
             exp: created_at + REFRESH_MAX_AGE.as_secs(),
         };
 

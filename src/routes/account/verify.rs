@@ -4,7 +4,7 @@ use serde::Deserialize;
 use crate::{
     base::{ self, response::ResponseModel },
     middlewares::auth::{ AuthorizationInfo, AuthorizationStatus },
-    routes::user::UserRoutesState,
+    routes::account::AccountRoutesState,
 };
 
 #[derive(Deserialize)]
@@ -14,18 +14,18 @@ pub struct VerifyPayload {
 
 pub async fn handler(
     Extension(authorization_info): Extension<AuthorizationInfo>,
-    State(state): State<UserRoutesState>,
+    State(state): State<AccountRoutesState>,
     Json(payload): Json<VerifyPayload>
 ) -> ResponseModel {
     if let AuthorizationStatus::Authorized = authorization_info.status {
         return base::response::error(
             StatusCode::FORBIDDEN,
-            "There's already an active user.",
+            "There's already an active account.",
             None
         );
     }
 
-    return match state.app.db.user.document.verify_email(&payload.verify_code).await {
+    return match state.app.db.account.document.verify_email(&payload.verify_code).await {
         Ok(true) => { base::response::success(StatusCode::OK, None) }
         Ok(false) => {
             base::response::error(
@@ -35,7 +35,7 @@ pub async fn handler(
             )
         }
         Err(error) => {
-            tracing::error!("Database failed to verify user: {}", error);
+            tracing::error!("Database failed to verify account: {}", error);
             base::response::internal_error(None)
         }
     };

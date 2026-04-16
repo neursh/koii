@@ -78,7 +78,7 @@ async fn main() {
         .allow_credentials(true);
 
     let app = Router::new()
-        .nest("/user", routes::user::routes(app_state.clone()))
+        .nest("/account", routes::account::routes(app_state.clone()))
         .layer(axum::middleware::from_fn_with_state(app_state.clone(), auth::authorize))
         .layer(TraceLayer::new_for_http())
         .layer(DefaultBodyLimit::max(2 * 1024 * 1024))

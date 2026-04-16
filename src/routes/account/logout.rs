@@ -9,7 +9,7 @@ use serde::Deserialize;
 use crate::{
     base::{ self, response::ResponseModel },
     middlewares::auth::{ AuthorizationInfo, AuthorizationStatus },
-    routes::user::UserRoutesState,
+    routes::account::AccountRoutesState,
 };
 
 #[derive(Deserialize)]
@@ -19,7 +19,7 @@ pub struct LogoutOptions {
 
 pub async fn handler(
     Extension(authorization_info): Extension<AuthorizationInfo>,
-    State(state): State<UserRoutesState>,
+    State(state): State<AccountRoutesState>,
     Query(options): Query<LogoutOptions>
 ) -> ResponseModel {
     match authorization_info.status {
@@ -36,10 +36,10 @@ pub async fn handler(
         }
     };
 
-    let mut token_cache = state.app.db.user.token.clone();
+    let mut token_cache = state.app.db.account.token.clone();
     match options.all {
         Some(true) => {
-            match token_cache.revoke_all(&token.user_id).await {
+            match token_cache.revoke_all(&token.account_id).await {
                 Ok(_) => {} // Revoked, passing down.
                 Err(_) => {
                     return base::response::internal_error(None);

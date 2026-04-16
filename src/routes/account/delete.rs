@@ -7,13 +7,13 @@ use axum::{
 
 use crate::{
     base::{ self, response::ResponseModel },
-    routes::user::UserRoutesState,
+    routes::account::AccountRoutesState,
     middlewares::auth::{ AuthorizationInfo, AuthorizationStatus },
 };
 
 pub async fn handler(
     Extension(authorization_info): Extension<AuthorizationInfo>,
-    State(state): State<UserRoutesState>
+    State(state): State<AccountRoutesState>
 ) -> ResponseModel {
     match authorization_info.status {
         AuthorizationStatus::Authorized => {} // Authorized, passing down.
@@ -29,17 +29,17 @@ pub async fn handler(
         }
     };
 
-    // Safely remove the user first, if fail, don't remove token.
-    match state.app.db.user.document.mark_deletion(&token.user_id).await {
+    // Safely remove the account first, if fail, don't remove token.
+    match state.app.db.account.document.mark_deletion(&token.account_id).await {
         Ok(_) => {} // Account marked deletion, passing down.
         Err(error) => {
-            tracing::error!("{}\n{}", token.user_id, error);
+            tracing::error!("{}\n{}", token.account_id, error);
             return base::response::internal_error(None);
         }
     }
 
-    // User now gone, delete tokens in cache.
-    return match state.app.db.user.token.clone().revoke_all(&token.user_id).await {
+    // Account now gone, delete tokens in cache.
+    return match state.app.db.account.token.clone().revoke_all(&token.account_id).await {
         Ok(_) => {
             base::response::success(
                 StatusCode::OK,
@@ -54,7 +54,7 @@ pub async fn handler(
             )
         }
         Err(error) => {
-            tracing::error!("{}\n{}", token.user_id, error);
+            tracing::error!("{}\n{}", token.account_id, error);
             base::response::internal_error(None)
         }
     };

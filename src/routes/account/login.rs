@@ -13,7 +13,7 @@ use crate::{
     base::{ self, response::ResponseModel },
     consts::{ REFRESH_MAX_AGE, TOKEN_MAX_AGE },
     middlewares::auth::{ AuthorizationInfo, AuthorizationStatus },
-    routes::user::UserRoutesState,
+    routes::account::AccountRoutesState,
     utils::cookies,
     workers::verify_pass::VerifyPassRequest,
 };
@@ -30,13 +30,13 @@ pub struct LoginPayload {
 
 pub async fn handler(
     Extension(authorization_info): Extension<AuthorizationInfo>,
-    State(state): State<UserRoutesState>,
+    State(state): State<AccountRoutesState>,
     Json(payload): Json<LoginPayload>
 ) -> ResponseModel {
     if let AuthorizationStatus::Authorized = authorization_info.status {
         return base::response::error(
             StatusCode::FORBIDDEN,
-            "There's already an active user.",
+            "There's already an active account.",
             None
         );
     }
@@ -55,13 +55,13 @@ pub async fn handler(
         }
     }
 
-    let user = state.app.db.user.document.get(
+    let account = state.app.db.account.document.get(
         bson::doc! {
             "email": &payload.email
         }
     ).await;
-    let user = match user {
-        Ok(Some(user)) => user,
+    let account = match account {
+        Ok(Some(account)) => account,
         Ok(None) => {
             return base::response::error(StatusCode::FORBIDDEN, "Wrong email or password.", None);
         }
@@ -74,12 +74,12 @@ pub async fn handler(
     match
         state.app.worker.verify_pass.send(VerifyPassRequest {
             password: payload.password,
-            hash: user.password_hash,
+            hash: account.password_hash,
         }).await
     {
         Ok(Some(true)) => {
-            match user.deleted {
-                None => {} // User not marked for deletion, passing down.
+            match account.deleted {
+                None => {} // Account not marked for deletion, passing down.
                 Some(_) => {
                     return base::response::error(
                         StatusCode::FORBIDDEN,
@@ -98,7 +98,7 @@ pub async fn handler(
         }
     }
 
-    match user.totp {
+    match account.totp {
         None => {} // No 2FA setup detected, passing down.
         Some(totp) => {
             let totp_code = match payload.totp_code {
@@ -128,10 +128,12 @@ pub async fn handler(
         }
     }
 
-    let (token, refresh) = state.app.jwt.generate_pair(user.user_id.clone());
+    let (token, refresh) = state.app.jwt.generate_pair(account.account_id.clone());
 
     return match
-        state.app.db.user.token.clone().create(user.user_id, token.0.identifier, token.0.exp).await
+        state.app.db.account.token
+            .clone()
+            .create(account.account_id, token.0.identifier, token.0.exp).await
     {
         Ok(_) => {
             let token_cookie = cookies::construct("token", token.1, TOKEN_MAX_AGE);

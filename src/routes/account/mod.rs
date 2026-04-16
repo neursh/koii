@@ -13,12 +13,12 @@ mod logout;
 mod delete;
 
 #[derive(Clone)]
-pub struct UserRoutesState {
+pub struct AccountRoutesState {
     pub app: Arc<AppState>,
 }
 
 pub fn routes(app_state: Arc<AppState>) -> Router {
-    let state = UserRoutesState {
+    let state = AccountRoutesState {
         app: app_state,
     };
 

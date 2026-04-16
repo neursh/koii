@@ -5,9 +5,9 @@ use validator::Validate;
 
 use crate::{
     base::{ self, response::ResponseModel },
-    database::user::document::UserDocument,
+    database::account::document::AccountDocument,
     middlewares::auth::{ AuthorizationInfo, AuthorizationStatus },
-    routes::user::UserRoutesState,
+    routes::account::AccountRoutesState,
     workers::verify_email::VerifyEmailRequest,
 };
 use nanoid::nanoid;
@@ -24,13 +24,13 @@ pub struct CreatePayload {
 
 pub async fn handler(
     Extension(authorization_info): Extension<AuthorizationInfo>,
-    State(state): State<UserRoutesState>,
+    State(state): State<AccountRoutesState>,
     Json(payload): Json<CreatePayload>
 ) -> ResponseModel {
     if let AuthorizationStatus::Authorized = authorization_info.status {
         return base::response::error(
             StatusCode::FORBIDDEN,
-            "There's already an active user.",
+            "There's already an active account.",
             None
         );
     }
@@ -64,7 +64,7 @@ pub async fn handler(
         }
     }
 
-    let user_id = nanoid!(48);
+    let account_id = nanoid!(48);
     let verify_code = nanoid!(64);
     let password_hash = match state.app.worker.hash_pass.send(payload.password).await {
         Ok(Some(hash)) => hash,
@@ -74,8 +74,8 @@ pub async fn handler(
         }
     };
 
-    let user = UserDocument {
-        user_id: user_id.clone(),
+    let account = AccountDocument {
+        account_id: account_id.clone(),
         email: payload.email.clone(),
         password_hash,
         totp: None,
@@ -85,8 +85,8 @@ pub async fn handler(
         deleted: None,
     };
 
-    match state.app.db.user.document.add(&user).await {
-        Ok(_) => {} // User added, passing down.
+    match state.app.db.account.document.add(&account).await {
+        Ok(_) => {} // Account added, passing down.
         Err(error) => {
             match *error.kind {
                 mongodb::error::ErrorKind::Write(WriteFailure::WriteError(ref write_error)) if
@@ -99,7 +99,7 @@ pub async fn handler(
                     );
                 }
                 _ => {
-                    tracing::error!("Database failed to store a user: {}", error);
+                    tracing::error!("Database failed to store an account: {}", error);
                     return base::response::internal_error(None);
                 }
             }
@@ -116,7 +116,7 @@ pub async fn handler(
         Err(_) => {
             tracing::error!(
                 "Email worker failed to deliver the verification link for {}.",
-                user_id
+                account_id
             );
             return base::response::internal_error(None);
         }

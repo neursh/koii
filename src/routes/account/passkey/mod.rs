@@ -1,14 +1,14 @@
 use axum::Router;
 use axum::routing::post;
 
-use crate::{ routes::user::UserRoutesState };
+use crate::{ routes::account::AccountRoutesState };
 
 mod create;
 mod challange;
 mod authorize;
 mod delete;
 
-pub fn routes(state: UserRoutesState) -> Router<UserRoutesState> {
+pub fn routes(state: AccountRoutesState) -> Router<AccountRoutesState> {
     Router::new()
         .route("/", post(create::handler).delete(delete::handler))
         .route("/challange", post(challange::handler))
