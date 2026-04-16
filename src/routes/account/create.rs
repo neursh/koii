@@ -41,7 +41,7 @@ pub async fn handler(
             if let Some(field) = field.errors().iter().next() {
                 return base::response::error(
                     StatusCode::BAD_REQUEST,
-                    &format!("A field is not satisfied: {}", field.0),
+                    &format!("At least one field is not satisfied: {}", field.0),
                     None
                 );
             }
