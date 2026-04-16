@@ -46,7 +46,7 @@ impl DocumentOperations {
     pub async fn new(collection: Collection<UserDocument>) -> Result<Self, mongodb::error::Error> {
         collection.create_index(
             IndexModel::builder()
-                .keys(bson::doc! { "email": 1 })
+                .keys(bson::doc! { "email": 1, "user_id": 1 })
                 .options(IndexOptions::builder().unique(true).build())
                 .build()
         ).await?;
