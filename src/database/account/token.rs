@@ -104,7 +104,9 @@ impl TokenOperations {
     }
 
     pub async fn revoke_all(&mut self, account_id: &str) -> Result<u64, TokenOperationError> {
-        let mut tokens_cursor = self.collection.find(bson::doc! { "account_id": account_id }).await?;
+        let mut tokens_cursor = self.collection.find(
+            bson::doc! { "account_id": account_id }
+        ).await?;
 
         // Loop through database to batch a cache request for all tokens.
         let mut mset_props: Vec<(String, bool)> = Vec::new();
@@ -128,8 +130,9 @@ impl TokenOperations {
 
     /// Cache miss, ask the database instead if this token is valid or not.
     async fn refetch(&mut self, claims: &TokenClaims) -> Result<bool, TokenOperationError> {
+        tracing::info!("Cache miss on account: {}", &claims.account_id);
         let document = self.collection.find_one(
-            bson::doc! { "_id": &claims.account_id, "identifier": &claims.identifier }
+            bson::doc! { "account_id": &claims.account_id, "identifier": &claims.identifier }
         ).await?;
 
         let cache_key = format!("account:{}:token:{}", claims.account_id, claims.identifier);
