@@ -24,7 +24,7 @@ pub struct LoginPayload {
     pub email: String,
     #[validate(length(min = 12))]
     pub password: String,
-    #[validate(length(equal = 5))]
+    #[validate(length(equal = 6))]
     pub totp_code: Option<String>,
 }
 
