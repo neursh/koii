@@ -123,11 +123,7 @@ pub async fn handler(
 
     let (token, refresh) = state.app.jwt.generate_pair(account.account_id.clone());
 
-    return match
-        state.app.db.account.token
-            .clone()
-            .create(account.account_id, refresh.0.identifier, refresh.0.exp).await
-    {
+    return match state.app.db.account.token.clone().create(refresh.0).await {
         Ok(_) => {
             let token_cookie = cookies::construct("token", token.1, TOKEN_MAX_AGE);
             let refresh_cookie = cookies::construct("refresh", refresh.1, REFRESH_MAX_AGE);

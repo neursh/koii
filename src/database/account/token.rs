@@ -3,7 +3,7 @@ use redis::{ AsyncCommands, RedisError, aio::MultiplexedConnection };
 use serde::{ Deserialize, Serialize };
 use thiserror::Error;
 
-use crate::{ consts::REFRESH_MAX_AGE, utils::jwt::TokenClaims };
+use crate::{ consts::REFRESH_MAX_AGE, utils::jwt::{ TokenClaims, TokenKind } };
 
 #[derive(Deserialize, Serialize)]
 pub struct TokenDocument {
@@ -55,24 +55,23 @@ impl TokenOperations {
     /// Returns a pair of valid JWT token using the current time on server.
     ///
     /// Formatted as cookies can be passed to client.
-    pub async fn create(
-        &mut self,
-        account_id: String,
-        identifier: String,
-        exp: u64
-    ) -> Result<(), TokenOperationError> {
-        let cache_key = format!("account:{}:token:{}", account_id, identifier);
+    pub async fn create(&mut self, claims: TokenClaims) -> Result<(), TokenOperationError> {
+        if let TokenKind::AUTHENTICATION = claims.kind {
+            tracing::warn!("The token claims used for creating a store is not a refresh token.");
+        }
+
+        let cache_key = format!("account:{}:token:{}", &claims.account_id, &claims.identifier);
 
         // Preload cache.
         self.cache.set::<&str, bool, String>(&cache_key, true).await?;
-        self.cache.expire_at::<&str, bool>(&cache_key, exp as i64).await?;
+        self.cache.expire_at::<&str, bool>(&cache_key, claims.exp as i64).await?;
 
         // Add database entry as a fallback.
         self.collection.insert_one(TokenDocument {
-            account_id,
-            identifier,
+            account_id: claims.account_id,
+            identifier: claims.identifier,
             created_at: bson::DateTime::from_millis(
-                ((exp - REFRESH_MAX_AGE.as_secs()) * 1000) as i64
+                ((claims.exp - REFRESH_MAX_AGE.as_secs()) * 1000) as i64
             ),
         }).await?;
 
