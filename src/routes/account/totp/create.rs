@@ -1,6 +1,7 @@
 use axum::{ Extension, Json, extract::State };
 use reqwest::StatusCode;
 use serde::Deserialize;
+use validator::{ Validate, ValidationErrorsKind };
 
 use crate::{
     base::{ self, response::ResponseModel },
@@ -9,8 +10,10 @@ use crate::{
     utils::totp::Totp,
 };
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Validate)]
 pub struct CreatePayload {
+    #[validate(length(max = 32))]
+    #[validate(does_not_contain(pattern = ";"))]
     name: String,
 }
 
@@ -23,6 +26,42 @@ pub async fn handler(
         AuthorizationStatus::Authorized => {} // Authorized, passing down.
         _ => {
             return base::response::error(StatusCode::UNAUTHORIZED, "Get out.", None);
+        }
+    }
+
+    match payload.validate() {
+        Ok(_) => {} // Valid payload, passing down.
+        Err(field) => {
+            let Some((_, ValidationErrorsKind::Field(validation_errors))) = field
+                .errors()
+                .iter()
+                .next() else {
+                return base::response::internal_error(None);
+            };
+
+            let Some(validation_error) = validation_errors.get(0) else {
+                return base::response::internal_error(None);
+            };
+
+            match validation_error.code {
+                std::borrow::Cow::Borrowed("length") => {
+                    return base::response::error(
+                        StatusCode::BAD_REQUEST,
+                        "The name for the TOTP is too long (32 characters max).",
+                        None
+                    );
+                }
+                std::borrow::Cow::Borrowed("does_not_contain") => {
+                    return base::response::error(
+                        StatusCode::BAD_REQUEST,
+                        "The name for the TOTP must not contains the character \";\"",
+                        None
+                    );
+                }
+                _ => {
+                    return base::response::internal_error(None);
+                }
+            }
         }
     }
 
