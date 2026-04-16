@@ -7,7 +7,6 @@ use axum::{
     http::{ Method, header::{ AUTHORIZATION, CONTENT_TYPE } },
 };
 use axum_server::tls_rustls::RustlsConfig;
-use rustls::crypto;
 use tower_http::{ cors::CorsLayer, trace::TraceLayer };
 use crate::{
     database::Database,
@@ -36,7 +35,7 @@ async fn main() {
     dotenv::dotenv().ok();
     tracing_subscriber::fmt().init();
 
-    crypto::ring::default_provider().install_default().unwrap();
+    rustls::crypto::ring::default_provider().install_default().unwrap();
 
     let host = std::env
         ::var("HOST")
@@ -95,7 +94,6 @@ async fn main() {
     match mode[1].as_str() {
         "secure" => {
             tracing::info!("Serving in secure context...");
-            rustls::crypto::ring::default_provider().install_default().unwrap();
             let tls_config = RustlsConfig::from_pem_file(
                 "cf-ocert.pem",
                 "cf-okey.pem"
