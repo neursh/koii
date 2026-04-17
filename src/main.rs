@@ -10,7 +10,6 @@ use axum_server::tls_rustls::RustlsConfig;
 use tower_http::{ cors::CorsLayer, trace::TraceLayer };
 use crate::{
     database::Database,
-    middlewares::auth,
     utils::{ jwt::Jwt, turnstile::Turnstile },
     workers::{ WorkerSpec, Workers, WorkersAllocate },
 };
@@ -78,9 +77,8 @@ async fn main() {
 
     let app = Router::new()
         .nest("/account", routes::account::routes(app_state.clone()))
-        .layer(axum::middleware::from_fn_with_state(app_state.clone(), auth::authorize))
         .layer(TraceLayer::new_for_http())
-        .layer(DefaultBodyLimit::max(2 * 1024 * 1024))
+        .layer(DefaultBodyLimit::max(1 * 1024 * 1024))
         .layer(cors);
 
     tracing::info!("Hello, world (world here is {})! :3", host);
@@ -105,7 +103,7 @@ async fn main() {
         }
         "insecure" => {
             tracing::info!("Serving in insecure context...");
-            tracing::error!(
+            tracing::warn!(
                 "Insecure context is for local development only, do not fuck this up, plwease QwQ"
             );
             axum_server::bind(host).serve(app.into_make_service()).await.unwrap();

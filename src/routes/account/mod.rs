@@ -2,7 +2,7 @@ use std::{ sync::Arc, time::Duration };
 
 use axum::{ Router, routing::{ get, patch, post } };
 
-use crate::{ AppState, middlewares::time };
+use crate::{ AppState, middlewares::{ auth, time } };
 
 mod create;
 mod verify;
@@ -29,6 +29,7 @@ pub fn routes(app_state: Arc<AppState>) -> Router {
         .route("/logout", get(logout::handler))
         .nest("/totp", totp::routes(state.clone()))
         .nest("/passkey", passkey::routes(state.clone()))
+        .layer(axum::middleware::from_fn_with_state(state.app.clone(), auth::authorize))
         .layer(axum::middleware::from_fn_with_state(Duration::from_millis(800), time::padding))
         .with_state(state)
 }
