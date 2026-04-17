@@ -66,7 +66,7 @@ pub async fn handler(
             return base::response::error(StatusCode::FORBIDDEN, "Wrong email or password.", None);
         }
         Err(error) => {
-            tracing::error!("{}\n{}", payload.email, error);
+            tracing::error!("Unable to retreive account for {}: {}", payload.email, error);
             return base::response::internal_error(None);
         }
     };

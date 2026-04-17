@@ -33,7 +33,7 @@ pub async fn handler(
     match state.app.db.account.document.mark_deletion(&token.account_id).await {
         Ok(_) => {} // Account marked deletion, passing down.
         Err(error) => {
-            tracing::error!("{}\n{}", token.account_id, error);
+            tracing::error!("Unable to mark deletion for {}: {}", token.account_id, error);
             return base::response::internal_error(None);
         }
     }

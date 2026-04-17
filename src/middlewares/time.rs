@@ -23,7 +23,7 @@ pub async fn padding(
             }
         }
         Err(err) => {
-            tracing::error!("{}", err);
+            tracing::error!("System time error: {}", err);
         }
     }
 
