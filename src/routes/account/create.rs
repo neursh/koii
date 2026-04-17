@@ -59,7 +59,7 @@ pub async fn handler(
             );
         }
         Err(_) => {
-            tracing::error!("Turnstile failure.");
+            tracing::error!("Can't contact Turnstile to verify the code when creating an account.");
             return base::response::internal_error(None);
         }
     }
@@ -69,7 +69,7 @@ pub async fn handler(
     let password_hash = match state.app.worker.hash_pass.send(payload.password).await {
         Ok(Some(hash)) => hash,
         _ => {
-            tracing::error!("Hash password worker failure.");
+            tracing::error!("Hash password worker failed when creating an account.");
             return base::response::internal_error(None);
         }
     };
@@ -99,7 +99,7 @@ pub async fn handler(
                     );
                 }
                 _ => {
-                    tracing::error!("Database failed to store an account: {}", error);
+                    tracing::error!("Database failed to store {}: {}", &payload.email, error);
                     return base::response::internal_error(None);
                 }
             }

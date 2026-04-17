@@ -39,23 +39,23 @@ pub async fn handler(
     }
 
     // Account now gone, delete tokens in cache.
-    return match state.app.db.account.token.clone().revoke_all(&token.account_id).await {
-        Ok(_) => {
-            base::response::success(
-                StatusCode::OK,
-                Some(
-                    AppendHeaders(
-                        vec![(
-                            SET_COOKIE,
-                            "token=; HttpOnly; SameSite=Lax; Secure; Path=/; Domain=.koii.space; Max-Age=0".to_string(),
-                        )]
-                    )
-                )
-            )
-        }
+    match state.app.db.account.token.clone().revoke_all(&token.account_id).await {
+        Ok(_) => {} // Revoked, passing down.
         Err(error) => {
-            tracing::error!("{}\n{}", token.account_id, error);
-            base::response::internal_error(None)
+            tracing::error!("Unable to revoke all tokens for {}: {}", &token.account_id, error);
+            return base::response::internal_error(None);
         }
-    };
+    }
+
+    base::response::success(
+        StatusCode::OK,
+        Some(
+            AppendHeaders(
+                vec![(
+                    SET_COOKIE,
+                    "token=; HttpOnly; SameSite=Lax; Secure; Path=/; Domain=.koii.space; Max-Age=0".to_string(),
+                )]
+            )
+        )
+    )
 }

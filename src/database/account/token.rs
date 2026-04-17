@@ -50,12 +50,8 @@ impl TokenOperations {
         Ok(TokenOperations { collection, cache })
     }
 
-    /// Create and add token to cache and database.
-    ///
-    /// Returns a pair of valid JWT token using the current time on server.
-    ///
-    /// Formatted as cookies can be passed to client.
-    pub async fn create(&mut self, claims: TokenClaims) -> Result<(), TokenOperationError> {
+    /// Add token to cache and database.
+    pub async fn add(&mut self, claims: TokenClaims) -> Result<(), TokenOperationError> {
         if let TokenKind::AUTHENTICATION = claims.kind {
             tracing::warn!("The token claims used for creating a store is not a refresh token.");
         }

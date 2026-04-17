@@ -41,7 +41,12 @@ pub async fn handler(
         Some(true) => {
             match token_cache.revoke_all(&token.account_id).await {
                 Ok(_) => {} // Revoked, passing down.
-                Err(_) => {
+                Err(error) => {
+                    tracing::error!(
+                        "Unable to revoke all tokens for {}: {}",
+                        &token.account_id,
+                        error
+                    );
                     return base::response::internal_error(None);
                 }
             }
@@ -49,7 +54,13 @@ pub async fn handler(
         _ => {
             match token_cache.revoke(&token).await {
                 Ok(_) => {} // Revoked, passing down.
-                Err(_) => {
+                Err(error) => {
+                    tracing::error!(
+                        "Unable to revoke {} token for {}: {}",
+                        &token.identifier,
+                        &token.account_id,
+                        error
+                    );
                     return base::response::internal_error(None);
                 }
             }

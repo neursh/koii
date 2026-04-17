@@ -123,7 +123,7 @@ pub async fn handler(
 
     let (token, refresh) = state.app.jwt.generate_pair(account.account_id.clone());
 
-    return match state.app.db.account.token.clone().create(refresh.0).await {
+    return match state.app.db.account.token.clone().add(refresh.0).await {
         Ok(_) => {
             let token_cookie = cookies::construct("token", token.1, TOKEN_MAX_AGE);
             let refresh_cookie = cookies::construct("refresh", refresh.1, REFRESH_MAX_AGE);
@@ -134,8 +134,8 @@ pub async fn handler(
             )
         }
         Err(error) => {
-            tracing::error!("{}\n{}", payload.email, error);
-            base::response::internal_error(None)
+            tracing::error!("Unable to add a token for {}: {}", &account.account_id, error);
+            return base::response::internal_error(None);
         }
     };
 }
