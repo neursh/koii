@@ -1,14 +1,17 @@
 use std::time::Duration;
 
-/// 15 minutes.
+// Time based variables.
 pub const TOKEN_MAX_AGE: Duration = Duration::from_mins(15);
-/// 15 days.
 pub const REFRESH_MAX_AGE: Duration = Duration::from_hours(15 * 24);
-/// 1 minutes.
 pub const SUDO_MAX_AGE: Duration = Duration::from_mins(1);
-/// 10 minutes.
 pub const EMAIL_VERIFY_EXPIRE: Duration = Duration::from_mins(10);
-/// 30 days.
 pub const ACCOUNT_DELETE_FRAME: Duration = Duration::from_hours(30 * 24);
 
+// JWT variables.
 pub const JWT_VALIDATION_ALGORITHM: jsonwebtoken::Algorithm = jsonwebtoken::Algorithm::ES256;
+
+// Argon2 ariables.
+pub const ARGON2_MEMORY_COST: u32 = 128 * 1024; // 128 mb
+pub const ARGON2_PARALLELISM_COST: u32 = 4;
+pub const ARGON2_TIME_COST: u32 = 5;
+pub const ARGON2_OUTPUT_LENGTH: usize = 64; // 64 bytes
