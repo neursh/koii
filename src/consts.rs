@@ -10,3 +10,5 @@ pub const SUDO_MAX_AGE: Duration = Duration::from_mins(1);
 pub const EMAIL_VERIFY_EXPIRE: Duration = Duration::from_mins(10);
 /// 30 days.
 pub const ACCOUNT_DELETE_FRAME: Duration = Duration::from_hours(30 * 24);
+
+pub const JWT_VALIDATION_ALGORITHM: jsonwebtoken::Algorithm = jsonwebtoken::Algorithm::ES256;

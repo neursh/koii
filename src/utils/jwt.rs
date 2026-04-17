@@ -1,10 +1,10 @@
 use std::{ fs::File, io::Read, path::Path };
 
-use jsonwebtoken::{ Algorithm, DecodingKey, EncodingKey, Header, Validation };
+use jsonwebtoken::{ DecodingKey, EncodingKey, Header, Validation };
 use nanoid::nanoid;
 use serde::{ Deserialize, Serialize };
 
-use crate::consts::{ REFRESH_MAX_AGE, TOKEN_MAX_AGE };
+use crate::consts::{ JWT_VALIDATION_ALGORITHM, REFRESH_MAX_AGE, TOKEN_MAX_AGE };
 
 #[derive(Clone, Serialize, Deserialize)]
 pub enum TokenKind {
@@ -31,7 +31,9 @@ impl Jwt {
                 if let Some(private_keyring) = quick_read("private.kc.pem") {
                     Some(EncodingKey::from_ec_pem(&private_keyring).unwrap())
                 } else {
-                    tracing::error!("No private key for JWT installed.");
+                    tracing::warn!(
+                        "No private key for JWT installed. Any method calls with private key usage will result in a panic."
+                    );
                     None
                 }
             },
@@ -43,10 +45,13 @@ impl Jwt {
         }
     }
 
-    /// Will panic if the private key is damaged.
+    /// Will panic if the private key is not provided.
     ///
     /// Returns a pair of key, one is the auth token, one is refresh token.
-    pub fn generate_pair(&self, account_id: String) -> ((TokenClaims, String), (TokenClaims, String)) {
+    pub fn generate_pair(
+        &self,
+        account_id: String
+    ) -> ((TokenClaims, String), (TokenClaims, String)) {
         let identifier = nanoid!(10);
         let created_at = jsonwebtoken::get_current_timestamp();
 
@@ -59,7 +64,7 @@ impl Jwt {
 
         let token = jsonwebtoken::jws
             ::encode(
-                &Header::new(Algorithm::ES256),
+                &Header::new(JWT_VALIDATION_ALGORITHM),
                 Some(&token_claims),
                 self.private_key.as_ref().unwrap()
             )
@@ -74,7 +79,7 @@ impl Jwt {
 
         let refresh = jsonwebtoken::jws
             ::encode(
-                &Header::new(Algorithm::ES256),
+                &Header::new(JWT_VALIDATION_ALGORITHM),
                 Some(&refresh_claims),
                 self.private_key.as_ref().unwrap()
             )
@@ -89,12 +94,12 @@ impl Jwt {
         )
     }
 
-    /// Will panic if the public key is damaged.
+    /// Any error happens during verification will return `None`.
     pub fn verify(&self, token: &str) -> Option<TokenClaims> {
         let data = jsonwebtoken::decode::<TokenClaims>(
             token,
             &self.public_key,
-            &Validation::new(Algorithm::ES256)
+            &Validation::new(JWT_VALIDATION_ALGORITHM)
         );
 
         return match data {
