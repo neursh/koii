@@ -1,4 +1,4 @@
-use mongodb::{ Collection, IndexModel, bson, options::IndexOptions };
+use mongodb::{ Collection, IndexModel, bson, options::{ CountOptions, IndexOptions } };
 use redis::{ AsyncCommands, RedisError, aio::MultiplexedConnection };
 use serde::{ Deserialize, Serialize };
 use thiserror::Error;
@@ -44,6 +44,7 @@ impl TokenOperations {
         collection.create_index(
             IndexModel::builder()
                 .keys(bson::doc! { "account_id": 1, "identifier": 1 })
+                .options(IndexOptions::builder().unique(true).build())
                 .build()
         ).await?;
 
@@ -126,25 +127,17 @@ impl TokenOperations {
     /// Cache miss, ask the database instead if this token is valid or not.
     async fn refetch(&mut self, claims: &TokenClaims) -> Result<bool, TokenOperationError> {
         tracing::info!("Cache miss on account: {}", &claims.account_id);
-        let document = self.collection.find_one(
-            bson::doc! { "account_id": &claims.account_id, "identifier": &claims.identifier }
-        ).await?;
+        let exists = self.collection
+            .count_documents(
+                bson::doc! { "account_id": &claims.account_id, "identifier": &claims.identifier }
+            )
+            .with_options(CountOptions::builder().limit(1).build()).await?;
 
         let cache_key = format!("account:{}:token:{}", claims.account_id, claims.identifier);
 
-        let status = match document {
-            Some(_) => {
-                self.cache.set::<&str, bool, String>(&cache_key, true).await?;
-                Ok(true)
-            }
-            None => {
-                self.cache.set::<&str, bool, String>(&cache_key, false).await?;
-                Ok(false)
-            }
-        };
-
+        self.cache.set::<&str, bool, String>(&cache_key, exists == 1).await?;
         self.cache.expire_at::<&str, bool>(&cache_key, claims.exp as i64).await?;
 
-        status
+        Ok(exists == 1)
     }
 }
