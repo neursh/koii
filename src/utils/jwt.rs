@@ -4,7 +4,12 @@ use jsonwebtoken::{ DecodingKey, EncodingKey, Header, Validation };
 use nanoid::nanoid;
 use serde::{ Deserialize, Serialize };
 
-use crate::consts::{ JWT_VALIDATION_ALGORITHM, REFRESH_MAX_AGE, TOKEN_MAX_AGE };
+use crate::consts::{
+    ACCOUNT_TOKEN_IDENTIFIER_LENGTH,
+    JWT_VALIDATION_ALGORITHM,
+    REFRESH_MAX_AGE,
+    TOKEN_MAX_AGE,
+};
 
 #[derive(Clone, Serialize, Deserialize)]
 pub enum TokenKind {
@@ -52,7 +57,7 @@ impl Jwt {
         &self,
         account_id: String
     ) -> ((TokenClaims, String), (TokenClaims, String)) {
-        let identifier = nanoid!(10);
+        let identifier = nanoid!(ACCOUNT_TOKEN_IDENTIFIER_LENGTH);
         let created_at = jsonwebtoken::get_current_timestamp();
 
         let token_claims = TokenClaims {

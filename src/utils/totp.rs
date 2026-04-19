@@ -5,6 +5,8 @@ use serde::{ Deserialize, Serialize };
 use totp_rs::{ SecretParseError, TOTP, TotpUrlError };
 use thiserror::Error;
 
+use crate::consts::TOTP_SECRET_LENGTH;
+
 #[derive(Serialize, Deserialize)]
 pub struct Totp {
     pub secret: Binary,
@@ -21,7 +23,7 @@ pub enum TotpError {
 
 impl Totp {
     pub fn new(name: String) -> Result<Self, TotpError> {
-        let secret = nanoid::rngs::default(128);
+        let secret = nanoid::rngs::default(TOTP_SECRET_LENGTH);
 
         let totp = TOTP::new(
             totp_rs::Algorithm::SHA1,

@@ -5,6 +5,7 @@ use validator::Validate;
 
 use crate::{
     base::{ self, response::ResponseModel },
+    consts::{ ACCOUNT_ID_LENGTH, EMAIL_VERIFY_CODE_LENGTH },
     database::account::document::AccountDocument,
     middlewares::auth::{ AuthorizationInfo, AuthorizationStatus },
     routes::account::AccountRoutesState,
@@ -64,8 +65,8 @@ pub async fn handler(
         }
     }
 
-    let account_id = nanoid!(48);
-    let verify_code = nanoid!(64);
+    let account_id = nanoid!(ACCOUNT_ID_LENGTH);
+    let verify_code = nanoid!(EMAIL_VERIFY_CODE_LENGTH);
     let password_hash = match state.app.worker.hash_pass.send(payload.password).await {
         Ok(Some(hash)) => hash,
         _ => {
