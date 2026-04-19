@@ -1,4 +1,9 @@
-use mongodb::{ Collection, IndexModel, bson, options::{ FindOneOptions, IndexOptions } };
+use mongodb::{
+    Collection,
+    IndexModel,
+    bson,
+    options::{ CountOptions, FindOneOptions, IndexOptions },
+};
 use serde::{ Deserialize, Serialize };
 
 use crate::{ consts::{ EMAIL_VERIFY_EXPIRE, ACCOUNT_DELETE_FRAME }, utils::totp::Totp };
@@ -43,10 +48,19 @@ pub struct DocumentOperations {
     collection: Collection<AccountDocument>,
 }
 impl DocumentOperations {
-    pub async fn new(collection: Collection<AccountDocument>) -> Result<Self, mongodb::error::Error> {
+    pub async fn new(
+        collection: Collection<AccountDocument>
+    ) -> Result<Self, mongodb::error::Error> {
         collection.create_index(
             IndexModel::builder()
-                .keys(bson::doc! { "email": 1, "account_id": 1 })
+                .keys(bson::doc! { "email": 1 })
+                .options(IndexOptions::builder().unique(true).build())
+                .build()
+        ).await?;
+
+        collection.create_index(
+            IndexModel::builder()
+                .keys(bson::doc! { "account_id": 1 })
                 .options(IndexOptions::builder().unique(true).build())
                 .build()
         ).await?;
@@ -80,8 +94,12 @@ impl DocumentOperations {
         self.collection.find_one(filter).await
     }
 
-    pub async fn exists(&self, filter: bson::Document) -> Result<bool, mongodb::error::Error> {
-        Ok(self.get(filter).await?.is_some())
+    pub async fn exists(&self, account_id: String) -> Result<bool, mongodb::error::Error> {
+        let exists = self.collection
+            .count_documents(bson::doc! { "account_id": account_id })
+            .with_options(CountOptions::builder().limit(1).build()).await?;
+
+        return Ok(exists == 1);
     }
 
     pub async fn add_totp(
