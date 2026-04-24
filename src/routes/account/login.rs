@@ -110,7 +110,7 @@ pub async fn handler(
                 Ok(false) => {
                     return base::response::error(
                         StatusCode::UNAUTHORIZED,
-                        "The TOTP code provided was wrong.",
+                        "Wrong TOTP code.",
                         None
                     );
                 }
