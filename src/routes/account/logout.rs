@@ -7,10 +7,9 @@ use axum::{
 use serde::Deserialize;
 
 use crate::{
-    base::{ self, response::ResponseModel },
+    base::{ self, cookies, response::ResponseModel },
     middlewares::auth::{ AuthorizationInfo, AuthorizationStatus },
     routes::account::AccountRoutesState,
-    utils::cookies,
 };
 
 #[derive(Deserialize)]

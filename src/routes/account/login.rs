@@ -9,11 +9,10 @@ use serde::Deserialize;
 use validator::Validate;
 
 use crate::{
-    base::{ self, response::ResponseModel },
+    base::{ self, cookies, response::ResponseModel },
     consts::{ REFRESH_MAX_AGE, TOKEN_MAX_AGE },
     middlewares::auth::{ AuthorizationInfo, AuthorizationStatus },
     routes::account::AccountRoutesState,
-    utils::cookies,
     workers::verify_pass::VerifyPassRequest,
 };
 
