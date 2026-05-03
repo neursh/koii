@@ -1,5 +1,5 @@
-use axum::{ Extension, Json, extract::State, http::StatusCode };
-use serde::Deserialize;
+use axum::{ Extension, extract::State, http::StatusCode };
+use serde::{ Deserialize, Serialize };
 
 use crate::{
     base::{ self, response::ResponseModel },
@@ -7,16 +7,17 @@ use crate::{
     routes::account::AccountRoutesState,
 };
 
-#[derive(Deserialize)]
-pub struct AuthorizePayload {
-    totp_code: String,
+#[derive(Serialize, Deserialize)]
+pub struct SudoMethodsResponse {
+    email: bool,
+    totp: bool,
+    passkey: bool,
 }
 
 pub async fn handler(
     Extension(authorization_info): Extension<AuthorizationInfo>,
-    State(state): State<AccountRoutesState>,
-    Json(payload): Json<AuthorizePayload>
-) -> ResponseModel {
+    State(state): State<AccountRoutesState>
+) -> ResponseModel<SudoMethodsResponse> {
     match authorization_info.status {
         AuthorizationStatus::Authorized => {} // Authorized, passing down.
         _ => {
@@ -31,22 +32,22 @@ pub async fn handler(
         }
     };
 
-    let totp = match state.app.db.account.document.get_totp(&token.account_id).await {
-        Ok(Some(totp)) => totp,
-        Ok(None) => {
-            return base::response::error(
-                StatusCode::NOT_FOUND,
-                "The account doesn't enable TOTP.",
-                None
-            );
+    let mut methods = SudoMethodsResponse {
+        email: false,
+        totp: false,
+        passkey: false,
+    };
+
+    match state.app.db.totp.get(&token.account_id).await {
+        Ok(None) => {}
+        Ok(Some(_)) => {
+            methods.totp = true;
+            methods.email = false;
         }
         Err(_) => {
             return base::response::internal_error(None);
         }
-    };
-
-    match totp.verify(&payload.totp_code) {
-        Ok(_) => todo!(),
-        Err(_) => todo!(),
     }
+
+    base::response::result(StatusCode::OK, methods, None)
 }
