@@ -18,6 +18,10 @@ pub const ARGON2_OUTPUT_LENGTH: usize = 64; // 64 bytes
 
 // Generation length variables
 pub const ACCOUNT_ID_LENGTH: usize = 64;
-pub const ACCOUNT_TOKEN_IDENTIFIER_LENGTH: usize = 48;
+pub const ACCOUNT_TOKEN_IDENTIFIER_LENGTH: usize = 32;
 pub const EMAIL_VERIFY_CODE_LENGTH: usize = 64;
 pub const TOTP_SECRET_LENGTH: usize = 128;
+
+// Passkey defaults
+pub const PASSKEY_ID: &str = "neurs.koii";
+pub const PASSKEY_ORIGIN_DOMAIN: &str = "https://auth.koii.space";
