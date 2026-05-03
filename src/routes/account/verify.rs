@@ -25,7 +25,7 @@ pub async fn handler(
         );
     }
 
-    return match state.app.db.account.document.verify_email(&payload.verify_code).await {
+    return match state.app.db.account.verify_email(&payload.verify_code).await {
         Ok(true) => { base::response::success(StatusCode::OK, None) }
         Ok(false) => {
             base::response::error(

@@ -10,6 +10,7 @@ use crate::{
     base::{ self, response::ResponseModel },
     middlewares::auth::{ AuthorizationInfo, AuthorizationStatus },
     routes::account::AccountRoutesState,
+    utils::cookies,
 };
 
 #[derive(Deserialize)]
@@ -36,7 +37,7 @@ pub async fn handler(
         }
     };
 
-    let mut token_cache = state.app.db.account.token.clone();
+    let mut token_cache = state.app.db.token.clone();
     match options.all {
         Some(true) => {
             match token_cache.revoke_all(&token.account_id).await {
@@ -71,10 +72,10 @@ pub async fn handler(
         StatusCode::OK,
         Some(
             AppendHeaders(
-                vec![(
-                    SET_COOKIE,
-                    "token=; HttpOnly; SameSite=Lax; Secure; Path=/; Domain=.koii.space; Max-Age=0".to_string(),
-                )]
+                vec![
+                    (SET_COOKIE, cookies::remove("token", "/")),
+                    (SET_COOKIE, cookies::remove("refresh", "/account/refresh_token"))
+                ]
             )
         )
     )

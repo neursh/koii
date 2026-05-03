@@ -5,7 +5,6 @@ use axum::{
     http::{ StatusCode, header::SET_COOKIE },
     response::AppendHeaders,
 };
-use mongodb::bson;
 use serde::Deserialize;
 use validator::Validate;
 
@@ -55,11 +54,7 @@ pub async fn handler(
         }
     }
 
-    let account = state.app.db.account.document.get(
-        bson::doc! {
-            "email": &payload.email
-        }
-    ).await;
+    let account = state.app.db.account.get_from_email(&payload.email).await;
     let account = match account {
         Ok(Some(account)) => account,
         Ok(None) => {
@@ -98,9 +93,9 @@ pub async fn handler(
         }
     }
 
-    match account.totp {
-        None => {} // No 2FA setup detected, passing down.
-        Some(totp) => {
+    match state.app.db.totp.get(&account.account_id).await {
+        Ok(None) => {} // No TOTP, passing down.
+        Ok(Some(totp)) => {
             let Some(totp_code) = payload.totp_code else {
                 return base::response::result(StatusCode::ACCEPTED, "TOTP Required".into(), None);
             };
@@ -119,23 +114,40 @@ pub async fn handler(
                 }
             }
         }
+        Err(error) => {
+            tracing::error!("Failed to retreive TOTP: {error}");
+            return base::response::internal_error(None);
+        }
     }
 
     let (token, refresh) = state.app.jwt.generate_pair(account.account_id.clone());
 
-    return match state.app.db.account.token.clone().add(refresh.0).await {
-        Ok(_) => {
-            let token_cookie = cookies::construct("token", token.1, TOKEN_MAX_AGE);
-            let refresh_cookie = cookies::construct("refresh", refresh.1, REFRESH_MAX_AGE);
-
-            base::response::success(
-                StatusCode::OK,
-                Some(AppendHeaders(vec![(SET_COOKIE, token_cookie), (SET_COOKIE, refresh_cookie)]))
-            )
+    match state.app.db.token.clone().add(refresh.0).await {
+        Ok(true) => {}
+        Ok(false) => {
+            tracing::error!("Gem alert {}.", &account.account_id);
+            return base::response::error(
+                StatusCode::CONFLICT,
+                "Thank you for being this rare.",
+                None
+            );
         }
         Err(error) => {
             tracing::error!("Unable to add a token for {}: {}", &account.account_id, error);
             return base::response::internal_error(None);
         }
-    };
+    }
+
+    let token_cookie = cookies::construct("token", token.1, "/", TOKEN_MAX_AGE);
+    let refresh_cookie = cookies::construct(
+        "refresh",
+        refresh.1,
+        "/account/refresh_token",
+        REFRESH_MAX_AGE
+    );
+
+    base::response::success(
+        StatusCode::OK,
+        Some(AppendHeaders(vec![(SET_COOKIE, token_cookie), (SET_COOKIE, refresh_cookie)]))
+    )
 }

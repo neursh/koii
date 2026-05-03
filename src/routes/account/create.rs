@@ -1,12 +1,12 @@
 use serde::Deserialize;
 use axum::{ Extension, Json, extract::State, http::StatusCode };
-use mongodb::{ bson::{ self, doc }, error::WriteFailure };
+use mongodb::{ bson::{ self, doc } };
 use validator::Validate;
 
 use crate::{
     base::{ self, response::ResponseModel },
     consts::{ ACCOUNT_ID_LENGTH, EMAIL_VERIFY_CODE_LENGTH },
-    database::account::document::AccountDocument,
+    database::account::AccountDocument,
     middlewares::auth::{ AuthorizationInfo, AuthorizationStatus },
     routes::account::AccountRoutesState,
     workers::verify_email::VerifyEmailRequest,
@@ -79,31 +79,20 @@ pub async fn handler(
         account_id: account_id.clone(),
         email: payload.email.clone(),
         password_hash,
-        totp: None,
         verify_requested: Some(bson::DateTime::now()),
         verify_code: Some(verify_code.clone()),
         created_at: None,
         deleted: None,
     };
 
-    match state.app.db.account.document.add(&account).await {
-        Ok(_) => {} // Account added, passing down.
+    match state.app.db.account.add(&account).await {
+        Ok(true) => {} // Account added, passing down.
+        Ok(false) => {
+            return base::response::error(StatusCode::CONFLICT, "Email already registered.", None);
+        }
         Err(error) => {
-            match *error.kind {
-                mongodb::error::ErrorKind::Write(WriteFailure::WriteError(ref write_error)) if
-                    write_error.code == 11000
-                => {
-                    return base::response::error(
-                        StatusCode::CONFLICT,
-                        "Email already registered.",
-                        None
-                    );
-                }
-                _ => {
-                    tracing::error!("Database failed to store {}: {}", &payload.email, error);
-                    return base::response::internal_error(None);
-                }
-            }
+            tracing::error!("Database failed to store {}: {}", &payload.email, error);
+            return base::response::internal_error(None);
         }
     }
 

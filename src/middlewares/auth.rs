@@ -53,7 +53,7 @@ async fn parse_cookies(state: Arc<AppState>, cookies: &str) -> AuthorizationInfo
 
     return match token {
         Some(token) => {
-            match state.db.account.token.clone().authorize(&token).await {
+            match state.db.token.clone().authorize(&token).await {
                 Ok(true) =>
                     AuthorizationInfo {
                         token: Some(token),

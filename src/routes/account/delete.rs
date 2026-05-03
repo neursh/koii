@@ -30,7 +30,7 @@ pub async fn handler(
     };
 
     // Safely remove the account first, if fail, don't remove token.
-    match state.app.db.account.document.mark_deletion(&token.account_id).await {
+    match state.app.db.account.mark_deletion(&token.account_id).await {
         Ok(_) => {} // Account marked deletion, passing down.
         Err(error) => {
             tracing::error!("Unable to mark deletion for {}: {}", token.account_id, error);
@@ -39,7 +39,7 @@ pub async fn handler(
     }
 
     // Account now gone, delete tokens in cache.
-    match state.app.db.account.token.clone().revoke_all(&token.account_id).await {
+    match state.app.db.token.clone().revoke_all(&token.account_id).await {
         Ok(_) => {} // Revoked, passing down.
         Err(error) => {
             tracing::error!("Unable to revoke all tokens for {}: {}", &token.account_id, error);

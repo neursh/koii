@@ -8,9 +8,9 @@ mod create;
 mod verify;
 mod login;
 mod totp;
-mod passkey;
 mod logout;
 mod delete;
+mod sudo;
 
 #[derive(Clone)]
 pub struct AccountRoutesState {
@@ -27,8 +27,8 @@ pub fn routes(app_state: Arc<AppState>) -> Router {
         .route("/verify", patch(verify::handler))
         .route("/login", post(login::handler))
         .route("/logout", get(logout::handler))
+        .nest("/sudo", sudo::routes(state.clone()))
         .nest("/totp", totp::routes(state.clone()))
-        .nest("/passkey", passkey::routes(state.clone()))
         .layer(axum::middleware::from_fn_with_state(state.app.clone(), auth::authorize))
         .layer(axum::middleware::from_fn_with_state(Duration::from_millis(800), time::padding))
         .with_state(state)
