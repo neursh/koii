@@ -1,4 +1,10 @@
-use mongodb::{ Collection, IndexModel, bson, options::{ CountOptions, IndexOptions } };
+use mongodb::{
+    Collection,
+    IndexModel,
+    bson,
+    error::WriteFailure,
+    options::{ CountOptions, IndexOptions },
+};
 use serde::{ Deserialize, Serialize };
 
 use crate::consts::SUDO_MAX_AGE;
@@ -34,18 +40,24 @@ impl SudoOperations {
     }
 
     /// Using the current account token and allows it to be used for destructive operations.
-    pub async fn upgrade(
-        &self,
-        account_id: String,
-        identifier: String
-    ) -> Result<(), mongodb::error::Error> {
-        self.collection.insert_one(SudoDocument {
-            account_id,
-            identifier,
-            created_at: bson::DateTime::now(),
-        }).await?;
+    pub async fn upgrade(&self, document: &SudoDocument) -> Result<bool, mongodb::error::Error> {
+        match self.collection.insert_one(document).await {
+            Ok(_) => {}
+            Err(error) => {
+                match *error.kind {
+                    mongodb::error::ErrorKind::Write(WriteFailure::WriteError(ref write_error)) if
+                        write_error.code == 11000
+                    => {
+                        return Ok(false);
+                    }
+                    _ => {
+                        return Err(error);
+                    }
+                }
+            }
+        }
 
-        Ok(())
+        Ok(true)
     }
 
     pub async fn authorize(

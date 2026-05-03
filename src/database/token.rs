@@ -1,4 +1,10 @@
-use mongodb::{ Collection, IndexModel, bson, options::{ CountOptions, IndexOptions } };
+use mongodb::{
+    Collection,
+    IndexModel,
+    bson,
+    error::WriteFailure,
+    options::{ CountOptions, IndexOptions },
+};
 use redis::{ AsyncCommands, RedisError, aio::MultiplexedConnection };
 use serde::{ Deserialize, Serialize };
 use thiserror::Error;
@@ -52,27 +58,43 @@ impl TokenOperations {
     }
 
     /// Add token to cache and database.
-    pub async fn add(&mut self, claims: TokenClaims) -> Result<(), TokenOperationError> {
+    pub async fn add(&mut self, claims: TokenClaims) -> Result<bool, TokenOperationError> {
         if let TokenKind::AUTHENTICATION = claims.kind {
             tracing::warn!("The token claims used for creating a store is not a refresh token.");
         }
 
         let cache_key = format!("account:{}:token:{}", &claims.account_id, &claims.identifier);
 
-        // Preload cache.
-        self.cache.set::<&str, bool, String>(&cache_key, true).await?;
-        self.cache.expire_at::<&str, bool>(&cache_key, claims.exp as i64).await?;
-
         // Add database entry as a fallback.
-        self.collection.insert_one(TokenDocument {
+        let result = self.collection.insert_one(TokenDocument {
             account_id: claims.account_id,
             identifier: claims.identifier,
             created_at: bson::DateTime::from_millis(
                 ((claims.exp - REFRESH_MAX_AGE.as_secs()) * 1000) as i64
             ),
-        }).await?;
+        }).await;
 
-        Ok(())
+        match result {
+            Ok(_) => {}
+            Err(error) => {
+                match *error.kind {
+                    mongodb::error::ErrorKind::Write(WriteFailure::WriteError(ref write_error)) if
+                        write_error.code == 11000
+                    => {
+                        return Ok(false);
+                    }
+                    _ => {
+                        return Err(TokenOperationError::Database(error));
+                    }
+                }
+            }
+        }
+
+        // Preload cache.
+        self.cache.set::<&str, bool, String>(&cache_key, true).await?;
+        self.cache.expire_at::<&str, bool>(&cache_key, claims.exp as i64).await?;
+
+        Ok(true)
     }
 
     pub async fn authorize(&mut self, claims: &TokenClaims) -> Result<bool, TokenOperationError> {

@@ -1,13 +1,24 @@
-use crate::database::account::AccountDatabase;
+use crate::database::{
+    account::AccountOperations,
+    sudo::SudoOperations,
+    token::TokenOperations,
+    totp::TotpOperations,
+};
 
 pub mod account;
+pub mod totp;
+pub mod token;
+pub mod sudo;
 
 pub struct Database {
-    pub account: AccountDatabase,
+    pub account: AccountOperations,
+    pub totp: TotpOperations,
+    pub token: TokenOperations,
+    pub sudo: SudoOperations,
 }
 
 impl Database {
-    pub async fn default() -> Self {
+    pub async fn default() -> Result<Self, mongodb::error::Error> {
         tracing::info!("Connecting to mongodb host...");
         let mongodb_connection_string = std::env
             ::var("MONGODB_CONNECTION_STRING")
@@ -24,8 +35,16 @@ impl Database {
             .get_multiplexed_async_connection().await
             .unwrap();
 
-        Database {
-            account: AccountDatabase::default(mongo_database, redis_client).await.unwrap(),
-        }
+        let account_collection = mongo_database.collection("accounts");
+        let totp_collection = mongo_database.collection("totps");
+        let token_collection = mongo_database.collection("tokens");
+        let sudo_collection = mongo_database.collection("sudo");
+
+        Ok(Database {
+            account: AccountOperations::new(account_collection).await.unwrap(),
+            totp: TotpOperations::new(totp_collection).await.unwrap(),
+            token: TokenOperations::new(token_collection, redis_client.clone()).await.unwrap(),
+            sudo: SudoOperations::new(sudo_collection).await.unwrap(),
+        })
     }
 }

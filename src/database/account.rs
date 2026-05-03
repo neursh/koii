@@ -2,11 +2,12 @@ use mongodb::{
     Collection,
     IndexModel,
     bson,
-    options::{ CountOptions, FindOneOptions, IndexOptions },
+    error::WriteFailure,
+    options::{ CountOptions, IndexOptions },
 };
 use serde::{ Deserialize, Serialize };
 
-use crate::{ consts::{ EMAIL_VERIFY_EXPIRE, ACCOUNT_DELETE_FRAME }, utils::totp::Totp };
+use crate::consts::{ EMAIL_VERIFY_EXPIRE, ACCOUNT_DELETE_FRAME };
 
 #[derive(Deserialize, Serialize)]
 pub struct AccountDocument {
@@ -18,9 +19,6 @@ pub struct AccountDocument {
 
     /// Account's password hash using argon2id.
     pub password_hash: String,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub totp: Option<Totp>,
 
     /// The time when the user verified the account locking in as the creation time.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -44,10 +42,10 @@ pub struct AccountDocument {
     pub deleted: Option<bson::DateTime>,
 }
 
-pub struct DocumentOperations {
+pub struct AccountOperations {
     collection: Collection<AccountDocument>,
 }
-impl DocumentOperations {
+impl AccountOperations {
     pub async fn new(
         collection: Collection<AccountDocument>
     ) -> Result<Self, mongodb::error::Error> {
@@ -79,19 +77,41 @@ impl DocumentOperations {
                 .build()
         ).await?;
 
-        Ok(DocumentOperations { collection })
+        Ok(AccountOperations { collection })
     }
 
-    pub async fn add(&self, document: &AccountDocument) -> Result<(), mongodb::error::Error> {
-        self.collection.insert_one(document).await?;
-        Ok(())
+    pub async fn add(&self, document: &AccountDocument) -> Result<bool, mongodb::error::Error> {
+        match self.collection.insert_one(document).await {
+            Ok(_) => {}
+            Err(error) => {
+                match *error.kind {
+                    mongodb::error::ErrorKind::Write(WriteFailure::WriteError(ref write_error)) if
+                        write_error.code == 11000
+                    => {
+                        return Ok(false);
+                    }
+                    _ => {
+                        return Err(error);
+                    }
+                }
+            }
+        }
+
+        Ok(true)
     }
 
-    pub async fn get(
+    pub async fn get_from_id(
         &self,
-        filter: bson::Document
+        account_id: &str
     ) -> Result<Option<AccountDocument>, mongodb::error::Error> {
-        self.collection.find_one(filter).await
+        self.collection.find_one(bson::doc! { "account_id": account_id }).await
+    }
+
+    pub async fn get_from_email(
+        &self,
+        email: &str
+    ) -> Result<Option<AccountDocument>, mongodb::error::Error> {
+        self.collection.find_one(bson::doc! { "email": email }).await
     }
 
     pub async fn exists(&self, account_id: String) -> Result<bool, mongodb::error::Error> {
@@ -100,41 +120,6 @@ impl DocumentOperations {
             .with_options(CountOptions::builder().limit(1).build()).await?;
 
         return Ok(exists == 1);
-    }
-
-    pub async fn add_totp(
-        &self,
-        account_id: &str,
-        account_totp: &Totp
-    ) -> Result<bool, mongodb::error::Error> {
-        let result = self.collection.update_one(
-            bson::doc! { "account_id": account_id, "totp": { "$exists": false } },
-            bson::doc! { "$set": { "totp": bson::serialize_to_bson(account_totp).unwrap() } }
-        ).await?;
-
-        Ok(result.modified_count == 1)
-    }
-
-    pub async fn get_totp(&self, account_id: &str) -> Result<Option<Totp>, mongodb::error::Error> {
-        let partial_document = self.collection
-            .find_one(bson::doc! { "account_id": account_id })
-            .with_options(
-                Some(
-                    FindOneOptions::builder()
-                        .projection(Some(bson::doc! { "totp": 1, "_id": 0 }))
-                        .build()
-                )
-            ).await?;
-
-        match partial_document {
-            Some(partial_document) => {
-                match partial_document.totp {
-                    Some(totp) => Ok(Some(totp)),
-                    None => Ok(None),
-                }
-            }
-            None => Ok(None),
-        }
     }
 
     pub async fn verify_email(&self, verify_code: &str) -> Result<bool, mongodb::error::Error> {
