@@ -58,7 +58,7 @@ async fn main() {
                 buffer: 100,
             },
         }),
-        db: Database::default().await,
+        db: Database::default().await.unwrap(),
         jwt: utils::jwt::Jwt::new(),
         turnstile: Turnstile::default(),
     });
