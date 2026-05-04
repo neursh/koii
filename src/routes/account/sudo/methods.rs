@@ -33,7 +33,7 @@ pub async fn handler(
     };
 
     let mut methods = SudoMethodsResponse {
-        email: false,
+        email: true,
         totp: false,
         passkey: false,
     };
