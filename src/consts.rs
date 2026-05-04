@@ -1,9 +1,9 @@
 use std::time::Duration;
 
 // Time based variables.
-pub const TOKEN_MAX_AGE: Duration = Duration::from_mins(15);
+pub const TOKEN_MAX_AGE: Duration = Duration::from_mins(30);
 pub const REFRESH_MAX_AGE: Duration = Duration::from_hours(15 * 24);
-pub const SUDO_MAX_AGE: Duration = Duration::from_mins(1);
+pub const SUDO_MAX_AGE: Duration = Duration::from_mins(5);
 pub const EMAIL_VERIFY_EXPIRE: Duration = Duration::from_mins(10);
 pub const ACCOUNT_DELETE_FRAME: Duration = Duration::from_hours(30 * 24);
 
