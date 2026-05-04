@@ -35,9 +35,9 @@ impl Database {
             .get_multiplexed_async_connection().await
             .unwrap();
 
-        let account_collection = mongo_database.collection("accounts");
-        let totp_collection = mongo_database.collection("totps");
-        let token_collection = mongo_database.collection("tokens");
+        let account_collection = mongo_database.collection("account");
+        let totp_collection = mongo_database.collection("totp");
+        let token_collection = mongo_database.collection("token");
         let sudo_collection = mongo_database.collection("sudo");
 
         Ok(Database {
