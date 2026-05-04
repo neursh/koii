@@ -119,7 +119,7 @@ impl AccountOperations {
             .count_documents(bson::doc! { "account_id": account_id })
             .with_options(CountOptions::builder().limit(1).build()).await?;
 
-        return Ok(exists == 1);
+        Ok(exists == 1)
     }
 
     pub async fn verify_email(&self, verify_code: &str) -> Result<bool, mongodb::error::Error> {
