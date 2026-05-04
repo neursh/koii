@@ -50,7 +50,7 @@ pub async fn handler(
         }
     }
 
-    match state.app.turnstile.verify(payload.clientstile).await {
+    match state.app.turnstile.verify(payload.clientstile, state.app.debug).await {
         Ok(true) => {} // Turnstile verified, passing down.
         Ok(false) => {
             return base::response::error(
@@ -66,7 +66,11 @@ pub async fn handler(
     }
 
     let account_id = nanoid!(ACCOUNT_ID_LENGTH);
-    let verify_code = nanoid!(EMAIL_VERIFY_CODE_LENGTH);
+    let verify_code = if !state.app.debug {
+        nanoid!(EMAIL_VERIFY_CODE_LENGTH)
+    } else {
+        "debug".to_string()
+    };
     let password_hash = match state.app.worker.hash_pass.send(payload.password).await {
         Ok(Some(hash)) => hash,
         _ => {

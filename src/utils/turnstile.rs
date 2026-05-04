@@ -38,7 +38,11 @@ impl Turnstile {
     }
 
     /// More strict checks needed.
-    pub async fn verify(&self, clientstile: String) -> Result<bool, ()> {
+    pub async fn verify(&self, clientstile: String, bypass: bool) -> Result<bool, ()> {
+        if bypass {
+            tracing::warn!("Bypass method for Turnstile was called.");
+            return Ok(true);
+        }
         if clientstile.len() > 2048 {
             return Ok(false);
         }

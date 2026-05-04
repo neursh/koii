@@ -25,18 +25,20 @@ pub async fn handler(
         );
     }
 
-    return match state.app.db.account.verify_email(&payload.verify_code).await {
-        Ok(true) => { base::response::success(StatusCode::OK, None) }
+    match state.app.db.account.verify_email(&payload.verify_code).await {
+        Ok(true) => {}
         Ok(false) => {
-            base::response::error(
+            return base::response::error(
                 StatusCode::NOT_FOUND,
                 "There's no account associated to this verify token.",
                 None
-            )
+            );
         }
         Err(error) => {
             tracing::error!("Database failed to verify account: {}", error);
-            base::response::internal_error(None)
+            return base::response::internal_error(None);
         }
-    };
+    }
+
+    base::response::success(StatusCode::OK, None)
 }
