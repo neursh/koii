@@ -74,7 +74,7 @@ pub async fn handler(
     let account = match account {
         Ok(Some(account)) => account,
         Ok(None) => {
-            return base::response::error(StatusCode::FORBIDDEN, "Wrong email or password.", None);
+            return base::response::error(StatusCode::NOT_FOUND, "Wrong email or password.", None);
         }
         Err(error) => {
             tracing::error!("Unable to retreive account for {}: {}", payload.email, error);
@@ -88,20 +88,9 @@ pub async fn handler(
             hash: account.password_hash,
         }).await
     {
-        Ok(Some(true)) => {
-            match account.deleted {
-                None => {} // Account not marked for deletion, passing down.
-                Some(_) => {
-                    return base::response::error(
-                        StatusCode::FORBIDDEN,
-                        "This account is pending for deletion, please recover this account.",
-                        None
-                    );
-                }
-            }
-        }
+        Ok(Some(true)) => {} // Password match, passing down.
         Ok(Some(false)) => {
-            return base::response::error(StatusCode::FORBIDDEN, "Wrong email or password.", None);
+            return base::response::error(StatusCode::NOT_FOUND, "Wrong email or password.", None);
         }
         _ => {
             tracing::error!("Verify password worker failure.");
@@ -109,11 +98,33 @@ pub async fn handler(
         }
     }
 
+    match account.verify_requested {
+        None => {} // Account not in verify process, passing down.
+        Some(_) => {
+            return base::response::error(
+                StatusCode::FORBIDDEN,
+                "This account is pending for verification, please check your email.",
+                None
+            );
+        }
+    }
+
+    match account.deleted {
+        None => {} // Account not marked for deletion, passing down.
+        Some(_) => {
+            return base::response::error(
+                StatusCode::FORBIDDEN,
+                "This account is pending for deletion, please recover this account.",
+                None
+            );
+        }
+    }
+
     match state.app.db.totp.get(&account.account_id).await {
         Ok(None) => {} // No TOTP, passing down.
         Ok(Some(totp)) => {
             let Some(totp_code) = payload.totp_code else {
-                return base::response::result(StatusCode::ACCEPTED, "TOTP Required".into(), None);
+                return base::response::error(StatusCode::FORBIDDEN, "TOTP Required".into(), None);
             };
 
             match totp.verify(&totp_code) {
