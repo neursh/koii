@@ -22,6 +22,8 @@ pub struct LoginPayload {
     pub email: String,
     #[validate(length(min = 12))]
     pub password: String,
+    #[validate(length(max = 2048))]
+    pub clientstile: String,
     #[validate(length(equal = 6))]
     pub totp_code: Option<String>,
 }
@@ -49,6 +51,21 @@ pub async fn handler(
                     None
                 );
             }
+            return base::response::internal_error(None);
+        }
+    }
+
+    match state.app.turnstile.verify(payload.clientstile, state.app.debug).await {
+        Ok(true) => {} // Turnstile verified, passing down.
+        Ok(false) => {
+            return base::response::error(
+                StatusCode::BAD_REQUEST,
+                "Something went wrong, try refresh the page and enter information again.",
+                None
+            );
+        }
+        Err(_) => {
+            tracing::error!("Can't contact Turnstile to verify the code when creating an account.");
             return base::response::internal_error(None);
         }
     }
