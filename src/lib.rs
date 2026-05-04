@@ -3,13 +3,14 @@ use std::{ env::args, net::SocketAddr, sync::Arc };
 use axum::{
     Router,
     extract::DefaultBodyLimit,
-    http::HeaderValue,
-    http::{ Method, header::{ AUTHORIZATION, CONTENT_TYPE } },
+    http::{ HeaderValue, Method, header::{ AUTHORIZATION, CONTENT_TYPE } },
+    middleware,
 };
 use axum_server::tls_rustls::RustlsConfig;
-use tower_http::{ cors::CorsLayer, trace::TraceLayer };
+use tower_http::cors::CorsLayer;
 use crate::{
     database::Database,
+    middlewares::track,
     utils::{ jwt::Jwt, turnstile::Turnstile },
     workers::{ WorkerSpec, Workers, WorkersAllocate },
 };
@@ -118,7 +119,7 @@ pub async fn app(debug: bool) -> Router {
 
     Router::new()
         .nest("/account", routes::account::routes(app_state.clone()))
-        .layer(TraceLayer::new_for_http())
+        .layer(middleware::from_fn(track::log_requests))
         .layer(DefaultBodyLimit::max(1 * 1024 * 1024))
         .layer(cors)
 }
