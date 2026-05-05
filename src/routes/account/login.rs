@@ -124,7 +124,7 @@ pub async fn handler(
         Ok(None) => {} // No TOTP, passing down.
         Ok(Some(totp)) => {
             let Some(totp_code) = payload.totp_code else {
-                return base::response::error(StatusCode::FORBIDDEN, "TOTP Required".into(), None);
+                return base::response::error(StatusCode::FORBIDDEN, "TOTP Required.".into(), None);
             };
 
             match totp.verify(&totp_code) {
