@@ -40,7 +40,7 @@ impl SudoOperations {
     }
 
     /// Using the current account token and allows it to be used for destructive operations.
-    pub async fn upgrade(&self, document: &SudoDocument) -> Result<bool, mongodb::error::Error> {
+    pub async fn elevate(&self, document: &SudoDocument) -> Result<bool, mongodb::error::Error> {
         match self.collection.insert_one(document).await {
             Ok(_) => {}
             Err(error) => {
