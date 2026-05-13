@@ -29,11 +29,8 @@ pub async fn handler(
         }
     }
 
-    let token = match authorization_info.token {
-        Some(token) => token,
-        None => {
-            return base::response::internal_error(None);
-        }
+    let Some(token) = authorization_info.token else {
+        return base::response::internal_error(None);
     };
 
     let mut token_cache = state.app.db.token.clone();
