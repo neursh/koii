@@ -24,15 +24,15 @@ impl SudoOperations {
     pub async fn new(collection: Collection<SudoDocument>) -> Result<Self, mongodb::error::Error> {
         collection.create_index(
             IndexModel::builder()
-                .keys(bson::doc! { "created_at": 1 })
-                .options(IndexOptions::builder().expire_after(SUDO_MAX_AGE).build())
+                .keys(bson::doc! { "account_id": 1, "identifier": 1 })
+                .options(IndexOptions::builder().unique(true).build())
                 .build()
         ).await?;
 
         collection.create_index(
             IndexModel::builder()
-                .keys(bson::doc! { "account_id": 1, "identifier": 1 })
-                .options(IndexOptions::builder().unique(true).build())
+                .keys(bson::doc! { "created_at": 1 })
+                .options(IndexOptions::builder().expire_after(SUDO_MAX_AGE).build())
                 .build()
         ).await?;
 
