@@ -1,4 +1,4 @@
-use std::{ env::args, net::SocketAddr, sync::Arc };
+use std::{ env::args, net::SocketAddr, sync::Arc, time::Instant };
 
 use axum::{
     Router,
@@ -73,7 +73,7 @@ pub async fn core() {
                 "Insecure context is for local development only, do not fuck this up, plwease QwQ"
             );
             tracing::info!(
-                "Diabled security features:\n- mSSL to communicate with Cloudflare.\n- Turnstile check."
+                "Disabled security features:\n- mSSL to communicate with Cloudflare.\n- Turnstile check."
             );
             axum_server::bind(host).serve(app(true).await.into_make_service()).await.unwrap();
         }
@@ -84,6 +84,8 @@ pub async fn core() {
 /// Creates an app.
 pub async fn app(debug: bool) -> Router {
     tracing::info!("Initializing server state...");
+    let boot_time = Instant::now();
+
     let app_state = Arc::new(AppState {
         worker: Workers::new(WorkersAllocate {
             hash_pass: WorkerSpec {
@@ -116,6 +118,11 @@ pub async fn app(debug: bool) -> Router {
         .allow_methods(vec![Method::GET, Method::POST, Method::PUT, Method::PATCH, Method::DELETE])
         .allow_headers([AUTHORIZATION, CONTENT_TYPE])
         .allow_credentials(true);
+
+    tracing::info!(
+        "Server started succesfully. (Boot time: {}ms)",
+        boot_time.elapsed().as_millis()
+    );
 
     Router::new()
         .nest("/account", routes::account::routes(app_state.clone()))
