@@ -58,7 +58,7 @@ impl TokenOperations {
     }
 
     /// Add token to cache and database.
-    pub async fn add(&mut self, claims: TokenClaims) -> Result<bool, TokenOperationError> {
+    pub async fn issue(&mut self, claims: TokenClaims) -> Result<bool, TokenOperationError> {
         if let TokenKind::AUTHENTICATION = claims.kind {
             tracing::warn!("The token claims used for creating a store is not a refresh token.");
         }
