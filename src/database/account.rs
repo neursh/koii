@@ -3,7 +3,7 @@ use mongodb::{
     IndexModel,
     bson,
     error::WriteFailure,
-    options::{ CountOptions, IndexOptions },
+    options::IndexOptions,
 };
 use serde::{ Deserialize, Serialize };
 
@@ -112,14 +112,6 @@ impl AccountOperations {
         email: &str
     ) -> Result<Option<AccountDocument>, mongodb::error::Error> {
         self.collection.find_one(bson::doc! { "email": email }).await
-    }
-
-    pub async fn exists(&self, account_id: String) -> Result<bool, mongodb::error::Error> {
-        let exists = self.collection
-            .count_documents(bson::doc! { "account_id": account_id })
-            .with_options(CountOptions::builder().limit(1).build()).await?;
-
-        Ok(exists == 1)
     }
 
     pub async fn verify_email(&self, verify_code: &str) -> Result<bool, mongodb::error::Error> {
