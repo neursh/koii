@@ -55,7 +55,7 @@ impl Jwt {
     /// Returns a pair of key, one is the auth token, one is refresh token.
     pub fn generate_pair(
         &self,
-        account_id: String
+        account_id: &str
     ) -> ((TokenClaims, String), (TokenClaims, String)) {
         let identifier = nanoid!(ACCOUNT_TOKEN_IDENTIFIER_LENGTH);
         let created_at = jsonwebtoken::get_current_timestamp();
@@ -63,7 +63,7 @@ impl Jwt {
         let token_claims = TokenClaims {
             identifier: identifier.clone(),
             kind: TokenKind::AUTHENTICATION,
-            account_id: account_id.clone(),
+            account_id: account_id.to_owned(),
             exp: created_at + TOKEN_MAX_AGE.as_secs(),
         };
 
@@ -78,7 +78,7 @@ impl Jwt {
         let refresh_claims = TokenClaims {
             identifier: identifier.clone(),
             kind: TokenKind::REFRESH,
-            account_id: account_id.clone(),
+            account_id: account_id.to_owned(),
             exp: created_at + REFRESH_MAX_AGE.as_secs(),
         };
 

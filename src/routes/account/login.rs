@@ -170,7 +170,7 @@ pub async fn handler(
         }
     }
 
-    let (token, refresh) = state.app.jwt.generate_pair(account.account_id.clone());
+    let (token, refresh) = state.app.jwt.generate_pair(&account.account_id);
 
     match state.app.db.token.clone().issue(refresh.0).await {
         Ok(true) => {} // Token stored to db, passing down.
