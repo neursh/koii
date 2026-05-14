@@ -6,13 +6,13 @@
   
 </div>
 
-A privacy-friendly thingy to handle authentication for my projects and an OAuth2 provider.
+A privacy-focused authentication serivce to provide a secure base for my projects
 
-This auth server will allow people to use my projects without having to create an account on each of my future projects. While at it, I'll make it available to third-party services to use Koii as an OAuth2 method.
+This authentication service provides user with SSO for my projects without having to create an account on each of my projects. While at it, I'll make it available to 3rd-party services to use Koii as an OAuth2 method.
 
-By default for third-party services, no additional information will be given when connecting, a new ID ties to that service will be issued on your Koii account, and that's the only thing the service will know about you, a unique ID for that service alone.
+By default for 3rd-party services, an ID ties to that service will be issued that points to your Koii account, and that's the only thing the service will know about you. For communicating with the user, it's encouraged for 3rd-party services to go through KNAPI (Koii Notification API).
 
-Services can request for your email, and they have to explicitly disclose reasons why in the OAuth screen. It's also expected that ALL features from that service MUST work without the need for your emails
+Services can request for your email, but they have to explicitly disclose the reasons in the OAuth screen. It's also expected that ALL features from that service MUST work without the need for your email. 
 
 Man these are some bold claims like ppl would use this ToT
 
