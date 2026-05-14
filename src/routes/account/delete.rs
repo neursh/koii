@@ -8,22 +8,15 @@ use axum::{
 use crate::{
     base::{ self, response::ResponseModel },
     routes::account::AccountRoutesState,
-    middlewares::auth::{ AuthorizationInfo, AuthorizationStatus },
+    middlewares::auth::AuthorizationInfo,
 };
 
 pub async fn handler(
     Extension(authorization_info): Extension<AuthorizationInfo>,
     State(state): State<AccountRoutesState>
 ) -> ResponseModel {
-    match authorization_info.status {
-        AuthorizationStatus::Authorized => {} // Authorized, passing down.
-        _ => {
-            return base::response::error(StatusCode::UNAUTHORIZED, "Get out.", None);
-        }
-    }
-
     let Some(token) = authorization_info.token else {
-        return base::response::internal_error(None);
+        return base::response::error(StatusCode::UNAUTHORIZED, "Get out.", None);
     };
 
     // Safely remove the account first, if fail, don't remove token.

@@ -6,21 +6,17 @@ use axum::{
     middleware::Next,
     response::IntoResponse,
 };
-use cookie_rs::Cookie;
+use cookie_rs::CookieJar;
 use reqwest::header::COOKIE;
 
-use crate::{ AppState, utils::jwt::TokenClaims };
-
-#[derive(Clone)]
-pub enum AuthorizationStatus {
-    Authorized,
-    Unauthorized,
-}
+use crate::{ AppState, utils::jwt::{ TokenClaims, TokenKind } };
 
 #[derive(Clone)]
 pub struct AuthorizationInfo {
+    /// This value satisfies when `token` or `refresh` valid.
+    pub active: bool,
     pub token: Option<TokenClaims>,
-    pub status: AuthorizationStatus,
+    pub refresh: Option<TokenClaims>,
 }
 
 pub async fn authorize(
@@ -33,8 +29,9 @@ pub async fn authorize(
         request.extensions_mut().insert(parse_cookies(state, cookies).await);
     } else {
         request.extensions_mut().insert(AuthorizationInfo {
+            active: false,
             token: None,
-            status: AuthorizationStatus::Unauthorized,
+            refresh: None,
         });
     }
 
@@ -43,33 +40,30 @@ pub async fn authorize(
 
 async fn parse_cookies(state: Arc<AppState>, cookies: &str) -> AuthorizationInfo {
     let mut token = None;
+    let mut refresh = None;
+    let mut active = false;
 
-    for cookie in cookies.split("; ") {
-        if let Ok(payload) = Cookie::parse(cookie) && payload.name() == "token" {
-            token = state.jwt.verify(payload.value());
-            break;
-        }
+    let Ok(jar) = CookieJar::parse(cookies) else {
+        return AuthorizationInfo {
+            active: false,
+            token: None,
+            refresh: None,
+        };
+    };
+
+    if let Some(payload) = jar.get("token") {
+        token = state.jwt.verify(payload.value(), TokenKind::AUTHENTICATION);
+        active = token.is_some();
     }
 
-    return match token {
-        Some(token) => {
-            match state.db.token.clone().authorize(&token).await {
-                Ok(true) =>
-                    AuthorizationInfo {
-                        token: Some(token),
-                        status: AuthorizationStatus::Authorized,
-                    },
-                _ =>
-                    AuthorizationInfo {
-                        token: None,
-                        status: AuthorizationStatus::Unauthorized,
-                    },
-            }
-        }
-        None =>
-            AuthorizationInfo {
-                token: None,
-                status: AuthorizationStatus::Unauthorized,
-            },
-    };
+    if let Some(payload) = jar.get("refresh") {
+        refresh = state.jwt.verify(payload.value(), TokenKind::REFRESH);
+        active = refresh.is_some();
+    }
+
+    AuthorizationInfo {
+        active,
+        token,
+        refresh,
+    }
 }

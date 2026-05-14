@@ -3,7 +3,7 @@ use serde::{ Deserialize, Serialize };
 
 use crate::{
     base::{ self, response::ResponseModel },
-    middlewares::auth::{ AuthorizationInfo, AuthorizationStatus },
+    middlewares::auth::AuthorizationInfo,
     routes::account::AccountRoutesState,
 };
 
@@ -18,15 +18,8 @@ pub async fn handler(
     Extension(authorization_info): Extension<AuthorizationInfo>,
     State(state): State<AccountRoutesState>
 ) -> ResponseModel<SudoMethodsResponse> {
-    match authorization_info.status {
-        AuthorizationStatus::Authorized => {} // Authorized, passing down.
-        _ => {
-            return base::response::error(StatusCode::UNAUTHORIZED, "Get out.", None);
-        }
-    }
-
     let Some(token) = authorization_info.token else {
-        return base::response::internal_error(None);
+        return base::response::error(StatusCode::UNAUTHORIZED, "Get out.", None);
     };
 
     let mut methods = SudoMethodsResponse {

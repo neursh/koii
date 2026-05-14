@@ -7,7 +7,7 @@ use crate::{
     base::{ self, response::ResponseModel },
     consts::{ ACCOUNT_ID_LENGTH, EMAIL_VERIFY_CODE_LENGTH },
     database::account::AccountDocument,
-    middlewares::auth::{ AuthorizationInfo, AuthorizationStatus },
+    middlewares::auth::AuthorizationInfo,
     routes::account::AccountRoutesState,
     workers::verify_email::VerifyEmailRequest,
 };
@@ -28,7 +28,7 @@ pub async fn handler(
     State(state): State<AccountRoutesState>,
     Json(payload): Json<CreatePayload>
 ) -> ResponseModel {
-    if let AuthorizationStatus::Authorized = authorization_info.status {
+    if authorization_info.active {
         return base::response::error(
             StatusCode::FORBIDDEN,
             "There's already an active account.",

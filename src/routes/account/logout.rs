@@ -8,7 +8,7 @@ use serde::Deserialize;
 
 use crate::{
     base::{ self, cookies, response::ResponseModel },
-    middlewares::auth::{ AuthorizationInfo, AuthorizationStatus },
+    middlewares::auth::AuthorizationInfo,
     routes::account::AccountRoutesState,
 };
 
@@ -22,15 +22,8 @@ pub async fn handler(
     State(state): State<AccountRoutesState>,
     Query(options): Query<LogoutOptions>
 ) -> ResponseModel {
-    match authorization_info.status {
-        AuthorizationStatus::Authorized => {} // Authorized, passing down.
-        _ => {
-            return base::response::error(StatusCode::UNAUTHORIZED, "Get out.", None);
-        }
-    }
-
     let Some(token) = authorization_info.token else {
-        return base::response::internal_error(None);
+        return base::response::error(StatusCode::UNAUTHORIZED, "Get out.", None);
     };
 
     let mut token_cache = state.app.db.token.clone();

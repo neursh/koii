@@ -100,16 +100,31 @@ impl Jwt {
     }
 
     /// Any error happens during verification will return `None`.
-    pub fn verify(&self, token: &str) -> Option<TokenClaims> {
+    pub fn verify(&self, token: &str, expect_token_kind: TokenKind) -> Option<TokenClaims> {
         let data = jsonwebtoken::decode::<TokenClaims>(
             token,
             &self.public_key,
             &Validation::new(JWT_VALIDATION_ALGORITHM)
         );
 
-        return match data {
-            Ok(data) => { Some(data.claims) }
-            Err(_) => None,
+        let claims = match data {
+            Ok(data) => data.claims,
+            Err(_) => {
+                return None;
+            }
+        };
+
+        return match expect_token_kind {
+            TokenKind::AUTHENTICATION =>
+                match claims.kind {
+                    TokenKind::AUTHENTICATION => Some(claims),
+                    TokenKind::REFRESH => None,
+                }
+            TokenKind::REFRESH =>
+                match claims.kind {
+                    TokenKind::AUTHENTICATION => None,
+                    TokenKind::REFRESH => Some(claims),
+                }
         };
     }
 }

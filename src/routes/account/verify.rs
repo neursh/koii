@@ -3,7 +3,7 @@ use serde::Deserialize;
 
 use crate::{
     base::{ self, response::ResponseModel },
-    middlewares::auth::{ AuthorizationInfo, AuthorizationStatus },
+    middlewares::auth::AuthorizationInfo,
     routes::account::AccountRoutesState,
 };
 
@@ -17,7 +17,7 @@ pub async fn handler(
     State(state): State<AccountRoutesState>,
     Json(payload): Json<VerifyPayload>
 ) -> ResponseModel {
-    if let AuthorizationStatus::Authorized = authorization_info.status {
+    if authorization_info.active {
         return base::response::error(
             StatusCode::FORBIDDEN,
             "There's already an active account.",

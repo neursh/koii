@@ -6,7 +6,7 @@ use validator::{ Validate, ValidationErrorsKind };
 use crate::{
     base::{ self, response::ResponseModel },
     database::totp::TotpDocument,
-    middlewares::auth::{ AuthorizationInfo, AuthorizationStatus },
+    middlewares::auth::AuthorizationInfo,
     routes::account::AccountRoutesState,
     utils::totp::Totp,
 };
@@ -23,12 +23,9 @@ pub async fn handler(
     State(state): State<AccountRoutesState>,
     Json(payload): Json<CreatePayload>
 ) -> ResponseModel {
-    match authorization_info.status {
-        AuthorizationStatus::Authorized => {} // Authorized, passing down.
-        _ => {
-            return base::response::error(StatusCode::UNAUTHORIZED, "Get out.", None);
-        }
-    }
+    let Some(token) = authorization_info.token else {
+        return base::response::error(StatusCode::UNAUTHORIZED, "Get out.", None);
+    };
 
     match payload.validate() {
         Ok(_) => {} // Valid payload, passing down.
@@ -65,10 +62,6 @@ pub async fn handler(
             }
         }
     }
-
-    let Some(token) = authorization_info.token else {
-        return base::response::internal_error(None);
-    };
 
     let totp = match Totp::new(payload.name) {
         Ok(totp) => totp,

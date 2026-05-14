@@ -13,7 +13,7 @@ use crate::{
     base::{ self, cookies, response::ResponseModel },
     consts::{ REFRESH_MAX_AGE, TOKEN_MAX_AGE },
     database::totp_code::TotpCodeDocument,
-    middlewares::auth::{ AuthorizationInfo, AuthorizationStatus },
+    middlewares::auth::AuthorizationInfo,
     routes::account::AccountRoutesState,
     workers::verify_pass::VerifyPassRequest,
 };
@@ -35,7 +35,7 @@ pub async fn handler(
     State(state): State<AccountRoutesState>,
     Json(payload): Json<LoginPayload>
 ) -> ResponseModel {
-    if let AuthorizationStatus::Authorized = authorization_info.status {
+    if authorization_info.active {
         return base::response::error(
             StatusCode::FORBIDDEN,
             "There's already an active account.",
