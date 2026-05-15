@@ -36,11 +36,7 @@ pub async fn handler(
         }
     }
 
-    match
-        state.app.db.auth
-            .clone()
-            .revoke(&revoking_refresh.account_id, &revoking_refresh.identifier).await
-    {
+    match state.app.db.auth.clone().revoke(&revoking_refresh).await {
         Ok(true) => {} // Token revoked, passing down.
         Ok(false) => {
             return base::response::error(

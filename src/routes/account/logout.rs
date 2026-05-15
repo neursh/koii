@@ -42,7 +42,7 @@ pub async fn handler(
             }
         }
         _ => {
-            match token_cache.revoke(&token.account_id, &token.identifier).await {
+            match token_cache.revoke(&token).await {
                 Ok(_) => {} // Revoked, passing down.
                 Err(error) => {
                     tracing::error!(
