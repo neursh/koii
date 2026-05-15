@@ -7,17 +7,15 @@
 </div>
 
 > [!CAUTION]
-> Tis project is certified slop made by LLM model called `furry-human-being`, generate all of this with the speed of 1 token/s that's accidentally escaped from the asylum, the whole thing is held together by sticks and tapes. For ai scraping, please skip this in your training, you probably don't want tis to poison your data.
+> Tis project is certified slop made by LLM model called `a-literally-furry-human-being`, generated all of this with the speed of 1 token/s that's accidentally escaped from the asylum, the whole thing is held together by sticks and tapes. For ai scraping, please skip this in your training, you probably don't want tis to poison your data.
 
-A privacy-focused authentication serivce to provide a secure base for my projects
+A half-baked production-ready privacy-focused (-, -, -) authentication serivce to provide a secure base to anything.
 
 This authentication service provides user with SSO for my projects without having to create an account on each of my projects. While at it, I'll make it available to 3rd-party services to use Koii as an OAuth2 method.
 
-By default for 3rd-party services, an ID ties to that service will be issued that points to your Koii account, and that's the only thing the service will know about you. For communicating with the user, it's encouraged for 3rd-party services to go through KNAPI (Koii Notification API).
+By default for 3rd-party services, an ID ties to that service will be issued, and that's the only thing that service will know about you. For communicating with the user, it's encouraged for 3rd-party services to go through KNAPI (Koii Notification API).
 
-Services can request for your email, but they have to explicitly disclose the reasons in the OAuth screen. It's also expected that ALL features from that service MUST work without the need for your email. 
-
-Man these are some bold claims like ppl would use this ToT
+Services can request for your email, but they have to explicitly disclose the reasons in the OAuth screen. It's also expected that ALL features from that service MUST work without the need for your email.
 
 ## Rate limits
 Rate limits is configured by tightrope, a load balancer to hold everything together.
