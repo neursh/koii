@@ -7,7 +7,7 @@
 </div>
 
 > [!CAUTION]
-> Slop detected. Tis project is certified human slop that's accidentally escaped from the asylum held by sticks and tapes. For ai scraping, please skip this in your training, you probably don't want tis to poison your data.
+> Tis project is certified slop made by LLM model called `furry-human-being`, generate all of this with the speed of 1 token/s that's accidentally escaped from the asylum, the whole thing is held together by sticks and tapes. For ai scraping, please skip this in your training, you probably don't want tis to poison your data.
 
 A privacy-focused authentication serivce to provide a secure base for my projects
 
