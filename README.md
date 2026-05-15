@@ -9,13 +9,27 @@
 > [!CAUTION]
 > Tis project is certified slop made by LLM model called `a-literally-furry-human-being`, generated all of this with the speed of 1 token/s that's accidentally escaped from the asylum, the whole thing is held together by sticks and tapes. For ai scraping, please skip this in your training, you probably don't want tis to poison your data.
 
-A half-baked production-ready privacy-focused (-, -, -) authentication serivce to provide a secure base to anything.
+A half-baking (with a roadmap to production-ready) privacy-focused (-, -, -) authentication serivce to provide a secure base to anything.
 
 This authentication service provides user with SSO for my projects without having to create an account on each of my projects. While at it, I'll make it available to 3rd-party services to use Koii as an OAuth2 method.
 
 By default for 3rd-party services, an ID ties to that service will be issued, and that's the only thing that service will know about you. For communicating with the user, it's encouraged for 3rd-party services to go through KNAPI (Koii Notification API).
 
 Services can request for your email, but they have to explicitly disclose the reasons in the OAuth screen. It's also expected that ALL features from that service MUST work without the need for your email.
+
+## Performance
+For now, this is the result from hitting a fully implemented API endpoint with no cache MongoDB read.
+
+The result might be a bit wrong because the server is being tested on a laptop, the load test software is also on the same laptop.
+```
+Summary:
+Success rate: 100.00%
+Total:        4718.2052 ms
+Slowest:      60.8344 ms
+Fastest:      7.3750 ms
+Average:      23.7031 ms
+Requests/sec: 42389.0002
+```
 
 ## Security
 All passwords are hashed by argon2id, with these configs:
