@@ -55,7 +55,7 @@ For authenticated users, there will be rate limits too, though it won't have muc
 - `/base`: Contains primitive response models, cookies constructor,... to be used later for cleaner code.
 - `/database`: Each module controls a concept, usually a collection on a MongoDB database, and cache feature if used.
 - `/middlewares`: Self-explanatory.
-- `/routes`: Contains the API endpoints for Koii, obviously.
+- `/routes`: Contains the API endpoints for Koii, the routing happens in `mod.rs` of each endpoint in this directory, any other file is the controller for that endpoint.
 - `/workers`: Fire up workers for blocking, long CPU-bound tasks, or tasks that needed to run separately, strictly single-threaded, handles differently, or doesn't have to react to each request immediately.
 - `/utils`: Data processing modules for API endpoints to use. The execution will be executed on the endpoint itself, for lighter tasks that don't requires a thread.
 
