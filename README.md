@@ -70,6 +70,7 @@ Every modules is tied together using `AppState`, see `lib.rs` to see the structu
   - [ ] 2FA.
     - [x] TOTP utilities.
     - [x] Passkey utilities.
+  - [ ] Reactivate account.
   - [ ] Forget/edit password.
   - [ ] Change email.
 - [ ] OAuth2.
