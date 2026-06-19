@@ -64,9 +64,10 @@ Every modules is tied together using `AppState`, see `lib.rs` to see the structu
 ## Development status
 - [x] Email service & database.
 - [x] Basic user operations. (create, verify, login, refresh token, logout, delete)
+- [ ] Scoped tokens.
 - [ ] Advanced user operations:
   - [ ] Destructive operations protection.
-  - [ ] 2FA.
+  - [-] 2FA.
     - [x] TOTP.
     - [ ] Passkey.
   - [ ] Forget/edit password.
