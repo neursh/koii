@@ -117,20 +117,14 @@ async fn test_suite() {
     response.assert_json(&json!({"success": false, "error": "TOTP Required."}));
 
     // Sign in with TOTP.
-    let success_login = account_login(
-        &server,
-        correct_password,
-        Some(totp.generate_current().unwrap())
-    ).await;
+    let current_totp = totp.generate_current().unwrap();
+
+    let success_login = account_login(&server, correct_password, Some(current_totp.clone())).await;
     success_login.assert_status(StatusCode::OK);
     success_login.assert_json(&json!({"success": true}));
 
     // Sign in with the same TOTP code.
-    let response = account_login(
-        &server,
-        correct_password,
-        Some(totp.generate_current().unwrap())
-    ).await;
+    let response = account_login(&server, correct_password, Some(current_totp)).await;
     response.assert_status(StatusCode::UNAUTHORIZED);
     response.assert_json(&json!({"success": false, "error": "Wrong TOTP code."}));
 
