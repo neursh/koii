@@ -122,51 +122,59 @@ pub async fn handler(
         }
     }
 
-    match state.app.db.totp.store.get_from_account(&account.account_id).await {
-        Ok(None) => {} // No TOTP, passing down.
-        Ok(Some(totp)) => {
+    match account.mfa_status.totp {
+        false => {} // No TOTP, pasing down.
+        true => {
             let Some(totp_code) = payload.totp_code else {
                 return base::response::error(StatusCode::FORBIDDEN, "TOTP Required.".into(), None);
             };
 
-            match totp.verify(&totp_code) {
-                Ok(true) => {} // Correct TOTP code, passing down.
-                Ok(false) => {
-                    return base::response::error(
-                        StatusCode::UNAUTHORIZED,
-                        "Wrong TOTP code.",
-                        None
-                    );
-                }
-                Err(_) => {
+            match state.app.db.totp.store.get_from_account(&account.account_id).await {
+                Ok(None) => {
+                    tracing::error!("TOTP mismatch for {}", account.account_id);
                     return base::response::internal_error(None);
                 }
-            }
+                Ok(Some(totp)) => {
+                    match totp.verify(&totp_code) {
+                        Ok(true) => {} // Correct TOTP code, passing down.
+                        Ok(false) => {
+                            return base::response::error(
+                                StatusCode::UNAUTHORIZED,
+                                "Wrong TOTP code.",
+                                None
+                            );
+                        }
+                        Err(_) => {
+                            return base::response::internal_error(None);
+                        }
+                    }
 
-            let entry = TotpUsedCodeDocument {
-                account_id: account.account_id.clone(),
-                code: totp_code,
-                created_at: bson::DateTime::now(),
-            };
+                    let entry = TotpUsedCodeDocument {
+                        account_id: account.account_id.clone(),
+                        code: totp_code,
+                        created_at: bson::DateTime::now(),
+                    };
 
-            match state.app.db.totp.code.use_code(&entry).await {
-                Ok(true) => {} // New TOTP code used, passing down.
-                Ok(false) => {
-                    return base::response::error(
-                        StatusCode::UNAUTHORIZED,
-                        "Wrong TOTP code.",
-                        None
-                    );
+                    match state.app.db.totp.code.use_code(&entry).await {
+                        Ok(true) => {} // New TOTP code used, passing down.
+                        Ok(false) => {
+                            return base::response::error(
+                                StatusCode::UNAUTHORIZED,
+                                "Wrong TOTP code.",
+                                None
+                            );
+                        }
+                        Err(error) => {
+                            tracing::error!("Use TOTP failed: {error}");
+                            return base::response::internal_error(None);
+                        }
+                    }
                 }
                 Err(error) => {
-                    tracing::error!("Use TOTP failed: {error}");
+                    tracing::error!("Failed to retreive TOTP: {error}");
                     return base::response::internal_error(None);
                 }
             }
-        }
-        Err(error) => {
-            tracing::error!("Failed to retreive TOTP: {error}");
-            return base::response::internal_error(None);
         }
     }
 

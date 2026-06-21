@@ -5,8 +5,8 @@ use validator::Validate;
 
 use crate::{
     base::{ self, response::ResponseModel },
+    database::account::{ AccountDocument, AccountMfaStatus },
     env::{ ACCOUNT_ID_LENGTH, EMAIL_VERIFY_CODE_LENGTH },
-    database::account::AccountDocument,
     middlewares::auth::AuthorizationInfo,
     routes::account::AccountRoutesState,
     workers::verify_email::VerifyEmailRequest,
@@ -94,6 +94,7 @@ pub async fn handler(
         account_id: account_id.clone(),
         email: payload.email.clone(),
         password_hash,
+        mfa_status: AccountMfaStatus { totp: false, passkey: false },
         verify_requested: Some(bson::DateTime::now()),
         verify_code: Some(verify_code.clone()),
         created_at: None,
