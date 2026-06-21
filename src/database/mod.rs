@@ -42,7 +42,10 @@ impl Database {
         Ok(Database {
             account: AccountOperations::new(account_collection).await.unwrap(),
             totp: TotpOperations {
-                store: TotpStoreOperations::new(totp_collection).await.unwrap(),
+                store: TotpStoreOperations::new(
+                    totp_collection,
+                    mongo_client.clone()
+                ).await.unwrap(),
                 code: TotpUsedCodeOperations::new(totp_code_collection).await.unwrap(),
             },
             auth: AuthOperations::new(auth_collection, redis_client.clone()).await.unwrap(),
