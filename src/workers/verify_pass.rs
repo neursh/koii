@@ -16,7 +16,9 @@ pub struct VerifyPassRequest {
 }
 
 pub fn launch(
-    rx: kanal::AsyncReceiver<(VerifyPassRequest, Option<oneshot::Sender<Option<bool>>>)>,
+    rx: kanal::AsyncReceiver<
+        (VerifyPassRequest, Option<oneshot::Sender<Result<bool, argon2::password_hash::Error>>>)
+    >,
     threads: usize
 ) {
     let argon2id = Argon2::new(
@@ -40,18 +42,20 @@ pub fn launch(
 }
 
 fn worker(
-    rx: kanal::Receiver<(VerifyPassRequest, Option<oneshot::Sender<Option<bool>>>)>,
+    rx: kanal::Receiver<
+        (VerifyPassRequest, Option<oneshot::Sender<Result<bool, argon2::password_hash::Error>>>)
+    >,
     argon2id: Argon2
 ) {
     while let Ok((request, Some(sender))) = rx.recv() {
         match PasswordHash::new(&request.hash) {
             Ok(hash) => {
                 let _ = sender.send(
-                    Some(argon2id.verify_password(request.password.as_bytes(), &hash).is_ok())
+                    Ok(argon2id.verify_password(request.password.as_bytes(), &hash).is_ok())
                 );
             }
-            Err(_) => {
-                let _ = sender.send(None);
+            Err(error) => {
+                let _ = sender.send(Err(error));
             }
         }
     }

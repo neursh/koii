@@ -11,7 +11,9 @@ use crate::env::{
 };
 
 pub fn launch(
-    rx: kanal::AsyncReceiver<(String, Option<oneshot::Sender<Option<String>>>)>,
+    rx: kanal::AsyncReceiver<
+        (String, Option<oneshot::Sender<Result<String, argon2::password_hash::Error>>>)
+    >,
     threads: usize
 ) {
     let argon2id = Argon2::new(
@@ -35,17 +37,19 @@ pub fn launch(
 }
 
 fn worker(
-    rx: kanal::Receiver<(String, Option<oneshot::Sender<Option<String>>>)>,
+    rx: kanal::Receiver<
+        (String, Option<oneshot::Sender<Result<String, argon2::password_hash::Error>>>)
+    >,
     argon2id: Argon2
 ) {
     while let Ok((password, Some(sender))) = rx.recv() {
         let salt = SaltString::generate(&mut OsRng);
         match argon2id.hash_password(password.as_bytes(), &salt) {
             Ok(hashed) => {
-                let _ = sender.send(Some(hashed.to_string()));
+                let _ = sender.send(Ok(hashed.to_string()));
             }
-            Err(_) => {
-                let _ = sender.send(None);
+            Err(error) => {
+                let _ = sender.send(Err(error));
             }
         }
     }

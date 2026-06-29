@@ -19,9 +19,9 @@ pub struct WorkersAllocate {
 }
 
 pub struct Workers {
-    pub hash_pass: RequestHandler<String, Option<String>>,
-    pub verify_pass: RequestHandler<VerifyPassRequest, Option<bool>>,
-    pub verify_email: RequestHandler<VerifyEmailRequest, Option<()>>,
+    pub hash_pass: RequestHandler<String, Result<String, argon2::password_hash::Error>>,
+    pub verify_pass: RequestHandler<VerifyPassRequest, Result<bool, argon2::password_hash::Error>>,
+    pub verify_email: RequestHandler<VerifyEmailRequest, ()>,
 }
 impl Workers {
     pub fn new(allocate: WorkersAllocate) -> Self {
@@ -66,27 +66,18 @@ impl<R, P> RequestHandler<R, P> {
         }
     }
 
-    /// Send a request to the worker and wait for `Result<P, ()>`
-    pub async fn send(&self, request: R) -> Result<P, ()> {
+    /// Send a request to the worker and wait for data.
+    pub async fn send(&self, request: R) -> P {
         let (one_tx, one_rx) = oneshot::channel::<P>();
 
-        if let Err(_) = self.tx.send((request, Some(one_tx))).await {
-            return Err(());
-        }
-
-        if let Ok(result) = one_rx.await {
-            return Ok(result);
-        } else {
-            return Err(());
-        }
+        // Only fails when when all workers exited.
+        self.tx.send((request, Some(one_tx))).await.unwrap();
+        one_rx.await.unwrap()
     }
 
-    /// Send a request to the worker, but ignore output from the worker.
-    pub async fn send_ignore(&self, request: R) -> Result<(), ()> {
-        if let Err(_) = self.tx.send((request, None)).await {
-            return Err(());
-        }
-
-        Ok(())
+    /// Send a request to the worker, wait for it to finish, but ignore output from the worker.
+    pub async fn send_ignore(&self, request: R) {
+        // Only fails when when all workers exited.
+        self.tx.send((request, None)).await.unwrap();
     }
 }

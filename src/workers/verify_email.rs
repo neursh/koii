@@ -1,8 +1,8 @@
-use std::{ collections::HashMap, thread, time::Duration };
+use std::{ collections::HashMap, thread };
 use resend_rs::{ Resend, types::{ CreateEmailBaseOptions, EmailTemplate } };
 use tokio::sync::oneshot;
 
-use crate::env::{ ORIGIN_DOMAIN, RESEND_TOKEN };
+use crate::env::{ EMAIL_BATCHING_WINDOW, ORIGIN_DOMAIN, RESEND_TOKEN };
 
 pub struct VerifyEmailRequest {
     pub email: String,
@@ -11,7 +11,7 @@ pub struct VerifyEmailRequest {
 
 // The oneshot param is required by design for each services, but we don't use it.
 pub fn launch(
-    rx: kanal::AsyncReceiver<(VerifyEmailRequest, Option<oneshot::Sender<Option<()>>>)>,
+    rx: kanal::AsyncReceiver<(VerifyEmailRequest, Option<oneshot::Sender<()>>)>,
     threads: usize
 ) {
     if threads > 1 {
@@ -22,7 +22,7 @@ pub fn launch(
     thread::spawn(|| { worker(rx) });
 }
 
-fn worker(rx: kanal::Receiver<(VerifyEmailRequest, Option<oneshot::Sender<Option<()>>>)>) {
+fn worker(rx: kanal::Receiver<(VerifyEmailRequest, Option<oneshot::Sender<()>>)>) {
     // DO NOT MOVE THIS UP TO THE LAUNCHER FUNCTION.
     // Resend uses `reqwest` under the hood.
     // And if it's defined as blocking, it can't be initialized inside of tokio context.
@@ -40,16 +40,21 @@ fn worker(rx: kanal::Receiver<(VerifyEmailRequest, Option<oneshot::Sender<Option
                 .map(|request| { create_verify_base(&request.0) })
                 .collect();
 
-            let _ = resend.batch.send(batch);
+            if let Err(error) = resend.batch.send(batch) {
+                tracing::error!("Can't send email batch to Resend API: {error}");
+            }
+
             continue;
         }
 
         if waiting == 1 {
             let request = rx.recv().unwrap();
-            let _ = resend.emails.send(create_verify_base(&request.0));
+            if let Err(error) = resend.emails.send(create_verify_base(&request.0)) {
+                tracing::error!("Can't send email batch to Resend API: {error}");
+            }
         }
 
-        thread::sleep(Duration::from_millis(5000));
+        thread::sleep(*EMAIL_BATCHING_WINDOW);
     }
 }
 
