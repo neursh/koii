@@ -20,7 +20,7 @@ pub struct CreatePayload {
     #[validate(length(min = 12))]
     pub password: String,
     #[validate(length(max = 2048))]
-    pub clientstile: String,
+    pub turnstile_token: String,
 }
 
 pub async fn handler(
@@ -37,7 +37,7 @@ pub async fn handler(
     }
 
     match payload.validate() {
-        Ok(_) => {} // Valid payload, passing down.
+        Ok(_) => {}
         Err(field) => {
             if let Some(field) = field.errors().iter().next() {
                 return base::response::error(
@@ -50,8 +50,8 @@ pub async fn handler(
         }
     }
 
-    match state.app.turnstile.verify(payload.clientstile, state.app.debug).await {
-        Ok(true) => {} // Turnstile verified, passing down.
+    match state.app.turnstile.verify(payload.turnstile_token, state.app.debug).await {
+        Ok(true) => {}
         Ok(false) => {
             return base::response::error(
                 StatusCode::BAD_REQUEST,
@@ -66,7 +66,7 @@ pub async fn handler(
     }
 
     match state.app.db.account.get_from_email(&payload.email).await {
-        Ok(None) => {} // Account not found at this point, passing down to do hash.
+        Ok(None) => {}
         Ok(Some(_)) => {
             return base::response::error(StatusCode::CONFLICT, "Email already registered.", None);
         }
@@ -83,9 +83,9 @@ pub async fn handler(
         "debug".to_string()
     };
     let password_hash = match state.app.worker.hash_pass.send(payload.password).await {
-        Ok(Some(hash)) => hash,
-        _ => {
-            tracing::error!("Hash password worker failed when creating an account.");
+        Ok(hash) => hash,
+        Err(error) => {
+            tracing::error!("Hash password worker failed when creating an account: {error}");
             return base::response::internal_error(None);
         }
     };
@@ -102,7 +102,7 @@ pub async fn handler(
     };
 
     match state.app.db.account.add(&account).await {
-        Ok(true) => {} // Account added, passing down.
+        Ok(true) => {}
         Ok(false) => {
             return base::response::error(StatusCode::CONFLICT, "Email already registered.", None);
         }
@@ -112,21 +112,10 @@ pub async fn handler(
         }
     }
 
-    match
-        state.app.worker.verify_email.send_ignore(VerifyEmailRequest {
-            email: payload.email,
-            verify_code,
-        }).await
-    {
-        Ok(_) => {} // Send email successful, passing down.
-        Err(_) => {
-            tracing::error!(
-                "Email worker failed to deliver the verification link for {}.",
-                account_id
-            );
-            return base::response::internal_error(None);
-        }
-    }
+    state.app.worker.verify_email.send_ignore(VerifyEmailRequest {
+        email: payload.email,
+        verify_code,
+    }).await;
 
     base::response::result(
         StatusCode::CREATED,
