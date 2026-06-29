@@ -35,11 +35,6 @@ pub enum KeyKind {
     ///
     /// NEVER PUT THIS TOKEN IN COOKIE.
     UPGRADE,
-
-    /// Destructive operation token.
-    ///
-    /// NEVER PUT THIS TOKEN IN COOKIE.
-    SUDO,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
