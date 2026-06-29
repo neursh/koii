@@ -5,16 +5,16 @@ use axum::{
     http::{ StatusCode, header::SET_COOKIE },
     response::AppendHeaders,
 };
-use mongodb::bson;
-use serde::Deserialize;
+use nanoid::nanoid;
+use serde::{ Deserialize, Serialize };
 use validator::Validate;
 
 use crate::{
     base::{ self, cookies, response::ResponseModel },
-    database::totp::code::TotpUsedCodeDocument,
-    env::{ REFRESH_MAX_AGE, TOKEN_MAX_AGE },
+    env::{ ACCOUNT_TOKEN_IDENTIFIER_LENGTH, REFRESH_MAX_AGE, TOKEN_MAX_AGE },
     middlewares::auth::AuthorizationInfo,
     routes::account::AccountRoutesState,
+    utils::jwt::KeyKind,
     workers::verify_pass::VerifyPassRequest,
 };
 
@@ -24,17 +24,21 @@ pub struct LoginPayload {
     pub email: String,
     #[validate(length(min = 12))]
     pub password: String,
-    #[validate(length(equal = 6))]
-    pub totp_code: Option<String>,
     #[validate(length(max = 2048))]
-    pub clientstile: String,
+    pub turnstile_token: String,
+}
+
+#[derive(Serialize, Validate, Clone)]
+pub struct LoginResponse {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub partial_login: Option<String>,
 }
 
 pub async fn handler(
     Extension(authorization_info): Extension<AuthorizationInfo>,
     State(state): State<AccountRoutesState>,
     Json(payload): Json<LoginPayload>
-) -> ResponseModel {
+) -> ResponseModel<LoginResponse> {
     if authorization_info.active {
         return base::response::error(
             StatusCode::FORBIDDEN,
@@ -44,7 +48,7 @@ pub async fn handler(
     }
 
     match payload.validate() {
-        Ok(_) => {} // Valid payload, passing down.
+        Ok(_) => {}
         Err(field) => {
             if let Some(field) = field.errors().iter().next() {
                 return base::response::error(
@@ -57,8 +61,8 @@ pub async fn handler(
         }
     }
 
-    match state.app.turnstile.verify(payload.clientstile, state.app.debug).await {
-        Ok(true) => {} // Turnstile verified, passing down.
+    match state.app.turnstile.verify(payload.turnstile_token, state.app.debug).await {
+        Ok(true) => {}
         Ok(false) => {
             return base::response::error(
                 StatusCode::BAD_REQUEST,
@@ -72,8 +76,7 @@ pub async fn handler(
         }
     }
 
-    let account = state.app.db.account.get_from_email(&payload.email).await;
-    let account = match account {
+    let account = match state.app.db.account.get_from_email(&payload.email).await {
         Ok(Some(account)) => account,
         Ok(None) => {
             return base::response::error(StatusCode::NOT_FOUND, "Wrong email or password.", None);
@@ -84,24 +87,24 @@ pub async fn handler(
         }
     };
 
-    match
-        state.app.worker.verify_pass.send(VerifyPassRequest {
-            password: payload.password,
-            hash: account.password_hash,
-        }).await
-    {
-        Ok(Some(true)) => {} // Password match, passing down.
-        Ok(Some(false)) => {
+    let verify_pass_request = VerifyPassRequest {
+        password: payload.password,
+        hash: account.password_hash,
+    };
+
+    match state.app.worker.verify_pass.send(verify_pass_request).await {
+        Ok(true) => {}
+        Ok(false) => {
             return base::response::error(StatusCode::NOT_FOUND, "Wrong email or password.", None);
         }
-        _ => {
-            tracing::error!("Verify password worker failure.");
+        Err(error) => {
+            tracing::error!("Verify password worker failure for {}: {error}", account.account_id);
             return base::response::internal_error(None);
         }
     }
 
     match account.verify_requested {
-        None => {} // Account not in verify process, passing down.
+        None => {}
         Some(_) => {
             return base::response::error(
                 StatusCode::FORBIDDEN,
@@ -112,7 +115,7 @@ pub async fn handler(
     }
 
     match account.deleted {
-        None => {} // Account not marked for deletion, passing down.
+        None => {}
         Some(_) => {
             return base::response::error(
                 StatusCode::FORBIDDEN,
@@ -122,68 +125,45 @@ pub async fn handler(
         }
     }
 
-    match account.mfa_status.totp {
-        false => {} // No TOTP, pasing down.
+    let created_at = jsonwebtoken::get_current_timestamp();
+    let identifier = nanoid!(*ACCOUNT_TOKEN_IDENTIFIER_LENGTH);
+
+    match account.mfa_status.has_mfa() {
+        false => {}
         true => {
-            let Some(totp_code) = payload.totp_code else {
-                return base::response::error(StatusCode::FORBIDDEN, "TOTP Required.".into(), None);
-            };
+            let partial_login = state.app.jwt.generate(
+                account.account_id,
+                identifier,
+                KeyKind::PartialLogin,
+                created_at + TOKEN_MAX_AGE.as_secs()
+            );
 
-            match state.app.db.totp.store.get_from_account(&account.account_id).await {
-                Ok(None) => {
-                    tracing::error!("TOTP mismatch for {}", account.account_id);
-                    return base::response::internal_error(None);
-                }
-                Ok(Some(totp)) => {
-                    match totp.verify(&totp_code) {
-                        Ok(true) => {} // Correct TOTP code, passing down.
-                        Ok(false) => {
-                            return base::response::error(
-                                StatusCode::UNAUTHORIZED,
-                                "Wrong TOTP code.",
-                                None
-                            );
-                        }
-                        Err(_) => {
-                            return base::response::internal_error(None);
-                        }
-                    }
-
-                    let entry = TotpUsedCodeDocument {
-                        account_id: account.account_id.clone(),
-                        code: totp_code,
-                        created_at: bson::DateTime::now(),
-                    };
-
-                    match state.app.db.totp.code.use_code(&entry).await {
-                        Ok(true) => {} // New TOTP code used, passing down.
-                        Ok(false) => {
-                            return base::response::error(
-                                StatusCode::UNAUTHORIZED,
-                                "Wrong TOTP code.",
-                                None
-                            );
-                        }
-                        Err(error) => {
-                            tracing::error!("Use TOTP failed: {error}");
-                            return base::response::internal_error(None);
-                        }
-                    }
-                }
-                Err(error) => {
-                    tracing::error!("Failed to retreive TOTP: {error}");
-                    return base::response::internal_error(None);
-                }
-            }
+            return base::response::result(
+                StatusCode::OK,
+                LoginResponse { partial_login: Some(partial_login.1) },
+                None
+            );
         }
     }
 
-    let pair = state.app.jwt.generate(&account.account_id);
+    let token = state.app.jwt.generate(
+        account.account_id.clone(),
+        identifier.clone(),
+        KeyKind::Authentication,
+        created_at + TOKEN_MAX_AGE.as_secs()
+    );
 
-    match state.app.db.auth.clone().issue(pair.token.0, pair.created_at).await {
-        Ok(true) => {} // Token stored to db, passing down.
+    let refresh = state.app.jwt.generate(
+        account.account_id.clone(),
+        identifier.clone(),
+        KeyKind::Refresh,
+        created_at + REFRESH_MAX_AGE.as_secs()
+    );
+
+    match state.app.db.auth.clone().issue(account.account_id.clone(), identifier, created_at).await {
+        Ok(true) => {}
         Ok(false) => {
-            tracing::error!("Gem alert {}.", &account.account_id);
+            tracing::error!("A nanoid collision was found.");
             return base::response::error(
                 StatusCode::CONFLICT,
                 "Thank you for being this rare.",
@@ -191,21 +171,22 @@ pub async fn handler(
             );
         }
         Err(error) => {
-            tracing::error!("Unable to issue a token for {}: {}", &account.account_id, error);
+            tracing::error!("Unable to issue a token for {}: {}", account.account_id, error);
             return base::response::internal_error(None);
         }
     }
 
-    let token_cookie = cookies::construct("token", pair.token.1, "/", *TOKEN_MAX_AGE);
+    let token_cookie = cookies::construct("token", token.1, "/", *TOKEN_MAX_AGE);
     let refresh_cookie = cookies::construct(
         "refresh",
-        pair.refresh.1,
-        "/account/refresh_token",
+        refresh.1,
+        "/account/refresh",
         *REFRESH_MAX_AGE
     );
 
-    base::response::success(
+    base::response::result(
         StatusCode::OK,
+        LoginResponse { partial_login: None },
         Some(AppendHeaders(vec![(SET_COOKIE, token_cookie), (SET_COOKIE, refresh_cookie)]))
     )
 }
