@@ -34,12 +34,12 @@ impl Turnstile {
     }
 
     /// More strict checks needed.
-    pub async fn verify(&self, clientstile: String, bypass: bool) -> Result<bool, ()> {
+    pub async fn verify(&self, turnstile_token: String, bypass: bool) -> Result<bool, ()> {
         if bypass {
             tracing::warn!("Bypass method for Turnstile was called.");
             return Ok(true);
         }
-        if clientstile.len() > 2048 {
+        if turnstile_token.len() > 2048 {
             return Ok(false);
         }
 
@@ -48,7 +48,7 @@ impl Turnstile {
             .form(
                 &[
                     ("secret", &*TURNSTILE_SECRET),
-                    ("response", &clientstile),
+                    ("response", &turnstile_token),
                 ]
             );
 
