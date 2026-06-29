@@ -26,11 +26,11 @@ pub async fn handler(
         return base::response::error(StatusCode::UNAUTHORIZED, "Get out.", None);
     };
 
-    let mut token_cache = state.app.db.auth.clone();
+    let mut auth = state.app.db.auth.clone();
     match options.all {
         Some(true) => {
-            match token_cache.revoke_all(&token.account_id).await {
-                Ok(_) => {} // Revoked, passing down.
+            match auth.revoke_all(&token.account_id).await {
+                Ok(_) => {}
                 Err(error) => {
                     tracing::error!(
                         "Unable to revoke all tokens for {}: {}",
@@ -42,8 +42,8 @@ pub async fn handler(
             }
         }
         _ => {
-            match token_cache.revoke(&token).await {
-                Ok(_) => {} // Revoked, passing down.
+            match auth.revoke(&token).await {
+                Ok(_) => {}
                 Err(error) => {
                     tracing::error!(
                         "Unable to revoke {} token for {}: {}",
