@@ -12,10 +12,34 @@ use crate::env::{
     TOKEN_MAX_AGE,
 };
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum KeyKind {
+    /// Access token of the user.
+    ///
+    /// This type of token stays in cookie field for koii's subservice to know which user it is.
     AUTHENTICATION,
+
+    /// Refresh token of the user.
+    ///
+    /// This type of token stays in cookie field for /refresh endpoint.
     REFRESH,
+
+    /// Temporary token for logged in user, but requires UPGRADE token to turn it into AUTHENTICATION.
+    ///
+    /// This token is only given to a user with at least one 2FA method enabled.
+    ///
+    /// NEVER PUT THIS TOKEN IN COOKIE.
+    LOGIN,
+
+    /// Upgrade token for user after verified via 2FA.
+    ///
+    /// NEVER PUT THIS TOKEN IN COOKIE.
+    UPGRADE,
+
+    /// Destructive operation token.
+    ///
+    /// NEVER PUT THIS TOKEN IN COOKIE.
+    SUDO,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -122,17 +146,9 @@ impl JwtService {
             }
         };
 
-        return match expect_kind {
-            KeyKind::AUTHENTICATION =>
-                match claims.kind {
-                    KeyKind::AUTHENTICATION => Some(claims),
-                    KeyKind::REFRESH => None,
-                }
-            KeyKind::REFRESH =>
-                match claims.kind {
-                    KeyKind::AUTHENTICATION => None,
-                    KeyKind::REFRESH => Some(claims),
-                }
+        return match expect_kind == claims.kind {
+            true => Some(claims),
+            false => None,
         };
     }
 }
