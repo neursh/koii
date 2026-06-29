@@ -8,6 +8,12 @@ pub struct AccountMfaStatus {
     pub passkey: bool,
 }
 
+impl AccountMfaStatus {
+    pub fn has_mfa(&self) -> bool {
+        self.passkey || self.totp
+    }
+}
+
 #[derive(Deserialize, Serialize)]
 pub struct AccountDocument {
     /// Unique ID to the account.
