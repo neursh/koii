@@ -1,11 +1,13 @@
 use axum::{ Extension, extract::State, response::AppendHeaders };
+use nanoid::nanoid;
 use reqwest::{ StatusCode, header::SET_COOKIE };
 
 use crate::{
     base::{ self, cookies, response::ResponseModel },
-    env::{ REFRESH_MAX_AGE, TOKEN_MAX_AGE },
+    env::{ ACCOUNT_TOKEN_IDENTIFIER_LENGTH, REFRESH_MAX_AGE, TOKEN_MAX_AGE },
     middlewares::auth::AuthorizationInfo,
     routes::account::AccountRoutesState,
+    utils::jwt::KeyKind,
 };
 
 pub async fn handler(
@@ -16,16 +18,36 @@ pub async fn handler(
         return base::response::error(StatusCode::UNAUTHORIZED, "Get out.", None);
     };
 
-    let pair = state.app.jwt.generate(&revoking_refresh.account_id);
+    let created_at = jsonwebtoken::get_current_timestamp();
+    let identifier = nanoid!(*ACCOUNT_TOKEN_IDENTIFIER_LENGTH);
 
-    match state.app.db.auth.clone().issue(pair.token.0, pair.created_at).await {
-        Ok(true) => {} // New token pushed into databse, passing down.
+    let token = state.app.jwt.generate(
+        revoking_refresh.account_id.clone(),
+        identifier.clone(),
+        KeyKind::Authentication,
+        created_at + TOKEN_MAX_AGE.as_secs()
+    );
+
+    let refresh = state.app.jwt.generate(
+        revoking_refresh.account_id.clone(),
+        identifier.clone(),
+        KeyKind::Refresh,
+        created_at + REFRESH_MAX_AGE.as_secs()
+    );
+
+    match
+        state.app.db.auth
+            .clone()
+            .issue(revoking_refresh.account_id.clone(), identifier, created_at).await
+    {
+        Ok(true) => {}
         Ok(false) => {
-            tracing::error!(
-                "Tried adding new identifier for {}, but found in database, which is rare af if you ask me.",
-                revoking_refresh.account_id
+            tracing::error!("A nanoid collision was found.");
+            return base::response::error(
+                StatusCode::CONFLICT,
+                "Thank you for being this rare.",
+                None
             );
-            return base::response::internal_error(None);
         }
         Err(_) => {
             tracing::error!(
@@ -37,7 +59,7 @@ pub async fn handler(
     }
 
     match state.app.db.auth.clone().revoke(&revoking_refresh).await {
-        Ok(true) => {} // Token revoked, passing down.
+        Ok(true) => {}
         Ok(false) => {
             return base::response::error(
                 StatusCode::FORBIDDEN,
@@ -50,10 +72,10 @@ pub async fn handler(
         }
     }
 
-    let token_cookie = cookies::construct("token", pair.token.1, "/", *TOKEN_MAX_AGE);
+    let token_cookie = cookies::construct("token", token.1, "/", *TOKEN_MAX_AGE);
     let refresh_cookie = cookies::construct(
         "refresh",
-        pair.refresh.1,
+        refresh.1,
         "/account/refresh",
         *REFRESH_MAX_AGE
     );
