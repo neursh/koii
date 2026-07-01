@@ -32,7 +32,7 @@ pub enum KeyKind {
     ///
     /// The identifier field is unique to this type of token, **DO NOT** reuse.
     ///
-    /// This can have multiple uses, the token can be used for:
+    /// The token can be used for:
     /// - Upgrade from `PartialLogin` to `Authentication`.
     /// - Create `Sudo` in combination with `Authentication`.
     /// - Create access code after OAuth2 to perform critical operations on 3rd party services.
