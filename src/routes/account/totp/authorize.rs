@@ -6,11 +6,11 @@ use validator::Validate;
 
 use crate::{
     base::{ self, response::ResponseModel },
-    database::totp::code::TotpUsedCodeDocument,
+    database::{ partial_login::PartialLoginDocument, totp::code::TotpUsedCodeDocument },
     env::{ ACCOUNT_TOKEN_IDENTIFIER_LENGTH, MFA_UPGRADE_MAX_AGE },
     middlewares::auth::AuthorizationInfo,
     routes::account::AccountRoutesState,
-    utils::jwt::KeyKind,
+    utils::jwt::{ KeyClaims, KeyKind },
 };
 
 #[derive(Deserialize, Validate, Clone)]
@@ -41,6 +41,7 @@ pub async fn handler(
             let Some(token) = state.app.jwt.verify(&partial_login, KeyKind::PartialLogin) else {
                 return base::response::error(StatusCode::UNAUTHORIZED, "Get out.", None);
             };
+
             token
         }
         None => {
@@ -94,13 +95,36 @@ pub async fn handler(
         }
     }
 
-    let identifier = nanoid!(*ACCOUNT_TOKEN_IDENTIFIER_LENGTH);
-    let mfa_upgrade = state.app.jwt.generate(
-        totp_used.account_id,
-        identifier,
-        KeyKind::MfaUpgrade,
-        jsonwebtoken::get_current_timestamp() + MFA_UPGRADE_MAX_AGE.as_secs()
-    );
+    if token.kind == KeyKind::PartialLogin {
+        let consume_document = PartialLoginDocument {
+            account_id: totp_used.account_id.clone(),
+            identifier: token.identifier,
+            created_at: bson::DateTime::from_millis((token.iat * 1000) as i64),
+        };
+        match state.app.db.partial_login.consume(&consume_document).await {
+            Ok(true) => {}
+            Ok(false) => {
+                return base::response::error(StatusCode::UNAUTHORIZED, "Get out.", None);
+            }
+            Err(error) => {
+                tracing::error!(
+                    "Failed to consume `PartialLogin` token for {}: {error}",
+                    consume_document.account_id
+                );
+                return base::response::internal_error(None);
+            }
+        }
+    }
 
-    base::response::result(StatusCode::OK, mfa_upgrade.signed.into(), None)
+    let created_at = jsonwebtoken::get_current_timestamp();
+    let identifier = nanoid!(*ACCOUNT_TOKEN_IDENTIFIER_LENGTH);
+    let signed_mfa_upgrade = state.app.jwt.generate(KeyClaims {
+        account_id: totp_used.account_id,
+        identifier,
+        kind: KeyKind::MfaUpgrade,
+        iat: created_at,
+        exp: created_at + MFA_UPGRADE_MAX_AGE.as_secs(),
+    });
+
+    base::response::result(StatusCode::OK, signed_mfa_upgrade.into(), None)
 }
