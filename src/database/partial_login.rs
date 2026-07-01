@@ -8,7 +8,7 @@ pub struct PartialLoginDocument {
     /// Unique ID to the account.
     pub account_id: String,
     pub identifier: String,
-    pub created_at: bson::DateTime,
+    pub issued_at: bson::DateTime,
 }
 
 pub struct PartialLoginOperations {
@@ -28,7 +28,7 @@ impl PartialLoginOperations {
 
         collection.create_index(
             IndexModel::builder()
-                .keys(bson::doc! { "created_at": 1 })
+                .keys(bson::doc! { "issued_at": 1 })
                 .options(IndexOptions::builder().expire_after(*PARTIAL_LOGIN_MAX_AGE).build())
                 .build()
         ).await?;

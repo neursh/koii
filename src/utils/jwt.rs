@@ -1,4 +1,4 @@
-use std::{ fs::File, io::Read, path::Path };
+use std::{ fs::File, io::Read, path::Path, time::Duration };
 
 use jsonwebtoken::{ DecodingKey, EncodingKey, Header, Validation };
 use serde::{ Deserialize, Serialize };
@@ -53,6 +53,15 @@ pub struct KeyClaims {
     pub account_id: String,
     pub identifier: String,
     pub kind: KeyKind,
+    pub iat: Duration,
+    pub exp: Duration,
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+struct RawKeyClaims {
+    pub account_id: String,
+    pub identifier: String,
+    pub kind: KeyKind,
     pub iat: u64,
     pub exp: u64,
 }
@@ -92,10 +101,18 @@ impl JwtService {
 
     /// Will panic if the private key is not provided.
     pub fn generate(&self, claims: KeyClaims) -> String {
+        let raw_claims = RawKeyClaims {
+            account_id: claims.account_id,
+            identifier: claims.identifier,
+            kind: claims.kind,
+            iat: claims.iat.as_secs(),
+            exp: claims.exp.as_secs(),
+        };
+
         let token = jsonwebtoken::jws
             ::encode(
                 &Header::new(self.algorithm),
-                Some(&claims),
+                Some(&raw_claims),
                 self.private_key.as_ref().unwrap()
             )
             .unwrap();
@@ -105,7 +122,7 @@ impl JwtService {
 
     /// Any error happens during verification will return `None`.
     pub fn verify(&self, token: &str, expect_kind: KeyKind) -> Option<KeyClaims> {
-        let data = jsonwebtoken::decode::<KeyClaims>(
+        let data = jsonwebtoken::decode::<RawKeyClaims>(
             token,
             &self.public_key,
             &Validation::new(self.algorithm)
@@ -116,6 +133,14 @@ impl JwtService {
             Err(_) => {
                 return None;
             }
+        };
+
+        let claims = KeyClaims {
+            account_id: claims.account_id,
+            identifier: claims.identifier,
+            kind: claims.kind,
+            iat: Duration::from_secs(claims.iat),
+            exp: Duration::from_secs(claims.exp),
         };
 
         return match expect_kind == claims.kind {

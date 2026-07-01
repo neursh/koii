@@ -14,7 +14,7 @@ use crate::{
     env::{ ACCOUNT_TOKEN_IDENTIFIER_LENGTH, PARTIAL_LOGIN_MAX_AGE, REFRESH_MAX_AGE, TOKEN_MAX_AGE },
     middlewares::auth::AuthorizationInfo,
     routes::account::AccountRoutesState,
-    utils::jwt::{ KeyClaims, KeyKind },
+    utils::{ jwt::{ KeyClaims, KeyKind }, timestamp },
     workers::verify_pass::VerifyPassRequest,
 };
 
@@ -125,7 +125,7 @@ pub async fn handler(
         }
     }
 
-    let created_at = jsonwebtoken::get_current_timestamp();
+    let issued_at = timestamp::now();
     let identifier = nanoid!(*ACCOUNT_TOKEN_IDENTIFIER_LENGTH);
 
     match account.mfa_status.has_mfa() {
@@ -135,8 +135,8 @@ pub async fn handler(
                 account_id: account.account_id,
                 identifier,
                 kind: KeyKind::PartialLogin,
-                iat: created_at,
-                exp: created_at + PARTIAL_LOGIN_MAX_AGE.as_secs(),
+                iat: issued_at,
+                exp: issued_at + *PARTIAL_LOGIN_MAX_AGE,
             });
 
             return base::response::result(
@@ -151,19 +151,19 @@ pub async fn handler(
         account_id: account.account_id.clone(),
         identifier: identifier.clone(),
         kind: KeyKind::Authentication,
-        iat: created_at,
-        exp: created_at + TOKEN_MAX_AGE.as_secs(),
+        iat: issued_at,
+        exp: issued_at + *TOKEN_MAX_AGE,
     });
 
     let signed_refresh = state.app.jwt.generate(KeyClaims {
         account_id: account.account_id.clone(),
         identifier: identifier.clone(),
         kind: KeyKind::Refresh,
-        iat: created_at,
-        exp: created_at + REFRESH_MAX_AGE.as_secs(),
+        iat: issued_at,
+        exp: issued_at + *REFRESH_MAX_AGE,
     });
 
-    match state.app.db.auth.clone().issue(account.account_id.clone(), identifier, created_at).await {
+    match state.app.db.auth.clone().issue(account.account_id.clone(), identifier, issued_at).await {
         Ok(true) => {}
         Ok(false) => {
             tracing::error!("A nanoid collision was found.");

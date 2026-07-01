@@ -1,9 +1,11 @@
+use std::time::Duration;
+
 use mongodb::{ Collection, IndexModel, bson, error::WriteFailure, options::IndexOptions };
 use redis::{ AsyncCommands, RedisError, aio::MultiplexedConnection };
 use serde::{ Deserialize, Serialize };
 use thiserror::Error;
 
-use crate::{ env::REFRESH_MAX_AGE, utils::jwt::KeyClaims };
+use crate::{ env::REFRESH_MAX_AGE, utils::{ jwt::KeyClaims, timestamp } };
 
 #[derive(Deserialize, Serialize)]
 pub struct AuthDocument {
@@ -14,7 +16,7 @@ pub struct AuthDocument {
     pub identifier: String,
 
     /// TTL: REFRESH_MAX_AGE
-    pub created_at: bson::DateTime,
+    pub issued_at: bson::DateTime,
 }
 
 #[derive(Error, Debug)]
@@ -43,7 +45,7 @@ impl AuthOperations {
 
         collection.create_index(
             IndexModel::builder()
-                .keys(bson::doc! { "created_at": 1 })
+                .keys(bson::doc! { "issued_at": 1 })
                 .options(IndexOptions::builder().expire_after(*REFRESH_MAX_AGE).build())
                 .build()
         ).await?;
@@ -56,7 +58,7 @@ impl AuthOperations {
         &mut self,
         account_id: String,
         identifier: String,
-        created_at: u64
+        issued_at: Duration
     ) -> Result<bool, AuthOperationError> {
         let cache_key = format!("account:{}:token:{}", &account_id, &identifier);
 
@@ -64,7 +66,7 @@ impl AuthOperations {
         let result = self.collection.insert_one(AuthDocument {
             account_id,
             identifier,
-            created_at: bson::DateTime::from_millis((created_at * 1000) as i64),
+            issued_at: bson::DateTime::from_millis(issued_at.as_millis() as i64),
         }).await;
 
         match result {
@@ -102,7 +104,7 @@ impl AuthOperations {
     ///
     /// But in some cases, better be safe than sorry, this method performs a basic manual check against the `exp` field of the key.
     pub async fn check_token(&mut self, claims: &KeyClaims) -> Result<bool, AuthOperationError> {
-        let current_time = jsonwebtoken::get_current_timestamp();
+        let current_time = timestamp::now();
 
         let status = self.cache.get::<String, Option<bool>>(
             format!("account:{}:token:{}", claims.account_id, claims.identifier)
@@ -156,7 +158,7 @@ impl AuthOperations {
     async fn refetch(
         &mut self,
         claims: &KeyClaims,
-        current_time: u64
+        current_time: Duration
     ) -> Result<bool, AuthOperationError> {
         tracing::info!("Cache miss on account: {}", &claims.account_id);
         let document = self.collection.find_one(

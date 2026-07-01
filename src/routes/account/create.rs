@@ -97,7 +97,7 @@ pub async fn handler(
         mfa_status: AccountMfaStatus { totp: false, passkey: false },
         verify_requested: Some(bson::DateTime::now()),
         verify_code: Some(verify_code.clone()),
-        created_at: None,
+        issued_at: None,
         deletion_requested: None,
     };
 

@@ -29,7 +29,7 @@ pub struct AccountDocument {
 
     /// The time when the user verified the account locking in as the creation time.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub created_at: Option<bson::DateTime>,
+    pub issued_at: Option<bson::DateTime>,
 
     /// The time when the verify key was sent, this value gets deleted when
     /// the account was verifed.
@@ -151,7 +151,7 @@ impl AccountOperations {
             bson::doc! { "verify_code": verify_code },
             bson::doc! {
                 "$set": {
-                    "created_at": bson::DateTime::now()
+                    "issued_at": bson::DateTime::now()
                 },
                 "$unset": {
                     "verify_requested": "",

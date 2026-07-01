@@ -8,7 +8,7 @@ pub struct TotpUsedCodeDocument {
     /// Unique ID to the account.
     pub account_id: String,
     pub code: String,
-    pub created_at: bson::DateTime,
+    pub used_at: bson::DateTime,
 }
 
 pub struct TotpUsedCodeOperations {
@@ -28,7 +28,7 @@ impl TotpUsedCodeOperations {
 
         collection.create_index(
             IndexModel::builder()
-                .keys(bson::doc! { "created_at": 1 })
+                .keys(bson::doc! { "used_at": 1 })
                 .options(IndexOptions::builder().expire_after(Some(*TOTP_CODE_VOID_WINDOW)).build())
                 .build()
         ).await?;

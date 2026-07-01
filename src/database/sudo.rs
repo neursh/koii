@@ -18,7 +18,7 @@ pub struct SudoDocument {
     pub identifier: String,
 
     /// TTL: SUDO_MAX_AGE
-    pub created_at: bson::DateTime,
+    pub issued_at: bson::DateTime,
 }
 
 pub struct SudoOperations {
@@ -36,7 +36,7 @@ impl SudoOperations {
 
         collection.create_index(
             IndexModel::builder()
-                .keys(bson::doc! { "created_at": 1 })
+                .keys(bson::doc! { "issued_at": 1 })
                 .options(IndexOptions::builder().expire_after(*SUDO_MAX_AGE).build())
                 .build()
         ).await?;

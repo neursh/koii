@@ -10,7 +10,7 @@ use crate::{
     env::{ ACCOUNT_TOKEN_IDENTIFIER_LENGTH, MFA_UPGRADE_MAX_AGE },
     middlewares::auth::AuthorizationInfo,
     routes::account::AccountRoutesState,
-    utils::jwt::{ KeyClaims, KeyKind },
+    utils::{ jwt::{ KeyClaims, KeyKind }, timestamp },
 };
 
 #[derive(Deserialize, Validate, Clone)]
@@ -81,7 +81,7 @@ pub async fn handler(
     let totp_used = TotpUsedCodeDocument {
         account_id: token.account_id,
         code: payload.totp_code,
-        created_at: bson::DateTime::now(),
+        used_at: bson::DateTime::now(),
     };
 
     match state.app.db.totp.code.consume(&totp_used).await {
@@ -99,7 +99,7 @@ pub async fn handler(
         let consume_document = PartialLoginDocument {
             account_id: totp_used.account_id.clone(),
             identifier: token.identifier,
-            created_at: bson::DateTime::from_millis((token.iat * 1000) as i64),
+            issued_at: bson::DateTime::from_millis(token.iat.as_millis() as i64),
         };
         match state.app.db.partial_login.consume(&consume_document).await {
             Ok(true) => {}
@@ -116,14 +116,14 @@ pub async fn handler(
         }
     }
 
-    let created_at = jsonwebtoken::get_current_timestamp();
+    let issued_at = timestamp::now();
     let identifier = nanoid!(*ACCOUNT_TOKEN_IDENTIFIER_LENGTH);
     let signed_mfa_upgrade = state.app.jwt.generate(KeyClaims {
         account_id: totp_used.account_id,
         identifier,
         kind: KeyKind::MfaUpgrade,
-        iat: created_at,
-        exp: created_at + MFA_UPGRADE_MAX_AGE.as_secs(),
+        iat: issued_at,
+        exp: issued_at + *MFA_UPGRADE_MAX_AGE,
     });
 
     base::response::result(StatusCode::OK, signed_mfa_upgrade.into(), None)

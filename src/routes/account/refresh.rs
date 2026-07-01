@@ -7,7 +7,7 @@ use crate::{
     env::{ ACCOUNT_TOKEN_IDENTIFIER_LENGTH, REFRESH_MAX_AGE, TOKEN_MAX_AGE },
     middlewares::auth::AuthorizationInfo,
     routes::account::AccountRoutesState,
-    utils::jwt::{ KeyClaims, KeyKind },
+    utils::{ jwt::{ KeyClaims, KeyKind }, timestamp },
 };
 
 pub async fn handler(
@@ -18,29 +18,29 @@ pub async fn handler(
         return base::response::error(StatusCode::UNAUTHORIZED, "Get out.", None);
     };
 
-    let created_at = jsonwebtoken::get_current_timestamp();
+    let issued_at = timestamp::now();
     let identifier = nanoid!(*ACCOUNT_TOKEN_IDENTIFIER_LENGTH);
 
     let signed_token = state.app.jwt.generate(KeyClaims {
         account_id: revoking_refresh.account_id.clone(),
         identifier: identifier.clone(),
         kind: KeyKind::Authentication,
-        iat: created_at,
-        exp: created_at + TOKEN_MAX_AGE.as_secs(),
+        iat: issued_at,
+        exp: issued_at + *TOKEN_MAX_AGE,
     });
 
     let signed_refresh = state.app.jwt.generate(KeyClaims {
         account_id: revoking_refresh.account_id.clone(),
         identifier: identifier.clone(),
         kind: KeyKind::Refresh,
-        iat: created_at,
-        exp: created_at + REFRESH_MAX_AGE.as_secs(),
+        iat: issued_at,
+        exp: issued_at + *REFRESH_MAX_AGE,
     });
 
     match
         state.app.db.auth
             .clone()
-            .issue(revoking_refresh.account_id.clone(), identifier, created_at).await
+            .issue(revoking_refresh.account_id.clone(), identifier, issued_at).await
     {
         Ok(true) => {}
         Ok(false) => {
