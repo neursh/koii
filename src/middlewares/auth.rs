@@ -18,9 +18,7 @@ use crate::{
 
 #[derive(Clone)]
 pub struct AuthorizationInfo {
-    /// This value satisfies when `token` or `refresh` valid.
-    ///
-    /// `[WARNING]` It is a weaker value, `active` is `true` doesn't mean `token` is available, and vice versa.
+    /// This value satisfies when `token` or `refresh` is valid.
     pub active: bool,
     pub token: Option<KeyClaims>,
     pub refresh: Option<KeyClaims>,
