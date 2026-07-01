@@ -38,6 +38,12 @@ pub struct KeyClaims {
     pub exp: u64,
 }
 
+#[derive(Clone)]
+pub struct JwtToken {
+    pub claims: KeyClaims,
+    pub signed: String,
+}
+
 pub struct JwtService {
     private_key: Option<EncodingKey>,
     public_key: DecodingKey,
@@ -72,8 +78,8 @@ impl JwtService {
         identifier: String,
         kind: KeyKind,
         exp: u64
-    ) -> (KeyClaims, String) {
-        let token_claims = KeyClaims {
+    ) -> JwtToken {
+        let claims = KeyClaims {
             account_id: account_id,
             identifier: identifier,
             kind,
@@ -83,12 +89,15 @@ impl JwtService {
         let token = jsonwebtoken::jws
             ::encode(
                 &Header::new(self.algorithm),
-                Some(&token_claims),
+                Some(&claims),
                 self.private_key.as_ref().unwrap()
             )
             .unwrap();
 
-        (token_claims, format!("{}.{}.{}", token.protected, token.payload, token.signature))
+        JwtToken {
+            claims,
+            signed: format!("{}.{}.{}", token.protected, token.payload, token.signature),
+        }
     }
 
     /// Any error happens during verification will return `None`.

@@ -72,10 +72,10 @@ pub async fn handler(
         }
     }
 
-    let token_cookie = cookies::construct("token", token.1, "/", *TOKEN_MAX_AGE);
+    let token_cookie = cookies::construct("token", token.signed, "/", *TOKEN_MAX_AGE);
     let refresh_cookie = cookies::construct(
         "refresh",
-        refresh.1,
+        refresh.signed,
         "/account/refresh",
         *REFRESH_MAX_AGE
     );

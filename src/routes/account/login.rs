@@ -11,7 +11,7 @@ use validator::Validate;
 
 use crate::{
     base::{ self, cookies, response::ResponseModel },
-    env::{ ACCOUNT_TOKEN_IDENTIFIER_LENGTH, REFRESH_MAX_AGE, TOKEN_MAX_AGE },
+    env::{ ACCOUNT_TOKEN_IDENTIFIER_LENGTH, PARTIAL_LOGIN_MAX_AGE, REFRESH_MAX_AGE, TOKEN_MAX_AGE },
     middlewares::auth::AuthorizationInfo,
     routes::account::AccountRoutesState,
     utils::jwt::KeyKind,
@@ -135,12 +135,12 @@ pub async fn handler(
                 account.account_id,
                 identifier,
                 KeyKind::PartialLogin,
-                created_at + TOKEN_MAX_AGE.as_secs()
+                created_at + PARTIAL_LOGIN_MAX_AGE.as_secs()
             );
 
             return base::response::result(
                 StatusCode::OK,
-                LoginResponse { partial_login: Some(partial_login.1) },
+                LoginResponse { partial_login: Some(partial_login.signed) },
                 None
             );
         }
@@ -176,10 +176,10 @@ pub async fn handler(
         }
     }
 
-    let token_cookie = cookies::construct("token", token.1, "/", *TOKEN_MAX_AGE);
+    let token_cookie = cookies::construct("token", token.signed, "/", *TOKEN_MAX_AGE);
     let refresh_cookie = cookies::construct(
         "refresh",
-        refresh.1,
+        refresh.signed,
         "/account/refresh",
         *REFRESH_MAX_AGE
     );
